@@ -51,7 +51,7 @@ that are substituted with actual values required by SLURM including `$KID`, `$NP
 2. Once all jobs are complete, inspect the individual SLURM logfiles to ensure that each one terminated properly. You can search the SLURM logfiles for logging errors (search for "ERROR")
    and warnings (search for "WARNING"). If the jobs did not complete, be sure to check the .error file produced by SLURM and raise an issue on this repository.
 
-3. After all jobs completed successfully, use the included CLI scripts that are installed along with Kraken to move your .com files into a common directory so you can submit them
+3. After all jobs complete successfully, use the included CLI scripts that are installed along with Kraken to move your .com files into a common directory so you can submit them
    all at once instead of navigating to the individual `<KRAKEN_ID>/dft/` directories.
 
    a. For your convenience, CLI scripts have been included to move the DFT files from the `<KRAKEN_ID>/dft/` directory to somewhere else if you
