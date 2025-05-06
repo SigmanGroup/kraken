@@ -104,22 +104,20 @@ run_kraken_conf_search.py -i ./data/input_file.csv --nprocs 4 --calculation-dir 
 ```
 
 3. After the script terminates, navigate to `./data/` to find the conformer search directories. Each `<KRAKEN_ID>/dft/` folder contains the `.com` files
-   for Gaussian16. You can run them directly in-place or follow the steps below if evaluating many ligands:
+   for Gaussian16. You can run them directly in-place or follow the steps below if evaluating many ligands:<br>
 
-    a. Move DFT input files to a centralized directory:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a. Move DFT input files to a centralized directory:<br>
 
-```bash
-extract_dft_files.py --input ./data/ --destination ./dft_calculation_folder_for_convenience/
-```
+    extract_dft_files.py --input ./data/ --destination ./dft_calculation_folder_for_convenience/
 
-    b. After running the DFT calculations, return the results to their original locations:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;b. After running the DFT calculations, return the results to their original locations:<br>
 
 ```bash
 return_dft_files.py --input ./dft_calculation_folder_for_convenience/ --destination ./data/
 ```
 
 4. After confirming the `.log`, `.chk`, and `.wfn` files are present in `<KRAKEN_ID>/dft/`, run the final Kraken DFT processing step.
-   This step operates on individual Kraken IDs (CSV input is not supported):
+   This step operates on individual Kraken IDs (CSV input is not supported):<br>
 
 ```bash
 run_kraken_dft.py --kid 90000001 --dir ./data/ --nprocs 4 --force > kraken_dft_processing_90000001.log
