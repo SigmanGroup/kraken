@@ -7,7 +7,7 @@
 
 '''
 Example submission script for submitting a batch
-of Kraken DFT processing calculations
+of Kraken conformer searches
 '''
 
 import re
@@ -19,7 +19,7 @@ import subprocess
 from pathlib import Path
 from kraken.cli.run_kraken_conf_search import _parse_csv, _correct_kraken_id
 
-SLURM_TEMPLATE = Path(__file__).parent.parent / 'slurm_templates/dft_slurm_template.sh'
+SLURM_TEMPLATE = Path(__file__).parent.parent / 'slurm_templates/conf_search_slurm_template.sh'
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +36,8 @@ of orgaNophosphorus ligands.
 CLI SCRIPT
 
 This is an example CLI script for submitting a batch
-of Kraken DFT processing calculations to the Sigman group
-Notchpeak owner nodes.
+of Kraken conformer search calculations to the Sigman
+group Notchpeak owner nodes.
 '''
 
 DESCRIPTION = '\n'.join(line.center(80) for line in DESCRIPTION.strip('\n').split('\n'))
@@ -80,33 +80,24 @@ def get_args() -> argparse.Namespace:
                         help='Path to the directory that will contain the results of Kraken\n\n',
                         metavar='DIR')
 
-    parser.add_argument('--force',
-                        action='store_true',
-                        help='Forces the recalculation instead of reading potentially incomplete results from file\n\n')
-
-    parser.add_argument('--debug',
-                        action='store_true',
-                        help='Prints debug information\n\n')
+    parser.add_argument('--debug', action='store_true', help='Prints debug information\n\n')
 
     args = parser.parse_args()
 
     args.csv = Path(args.csv)
     if not args.csv.exists():
-        raise FileNotFoundError(f'Could not locate {args.csv.absolute()}.')
-
-    args.calc_dir = Path(args.calc_dir)
-    if not args.calc_dir.exists():
-        raise FileNotFoundError(f'{args.calc_dir.absolute()} does not exist.')
+        raise FileNotFoundError(f'Could not locate {args.csv.absolute()} does not exist.')
 
     return args
 
-def write_dft_job_file(kraken_id: str,
-                       directory: Path,
-                       destination: Path,
-                       template: Path,
-                       nprocs: int,
-                       mem: int,
-                       force: bool = False) -> Path:
+def write_job_file(kraken_id: str,
+                   smiles: str,
+                   conversion_flag: int,
+                   directory: Path,
+                   destination: Path,
+                   template: Path,
+                   nprocs: int,
+                   mem: int) -> Path:
     '''
     Writes the job file
     '''
@@ -114,12 +105,12 @@ def write_dft_job_file(kraken_id: str,
         text = infile.read()
 
     text = re.sub(r'\$KID', str(kraken_id), text)
+    text = re.sub(r'\$SMILES', str(smiles), text)
+    text = re.sub(r'\$CALCDIR', str(directory.absolute()), text)
+    text = re.sub(r'\$CONVERSION_FLAG', str(conversion_flag), text)
     text = re.sub(r'\$NPROCS', str(nprocs), text)
     text = re.sub(r'\$MEM', str(mem), text)
-    text = re.sub(r'\$CALCDIR', str(directory.absolute()), text)
-
-    if force:
-        text = text.strip() + '\n                  --force\n'
+    text = re.sub(r'\$DIR', str(directory.absolute()), text)
 
     with open(destination, 'w', encoding='utf-8') as o:
         o.write(text)
@@ -139,6 +130,9 @@ def main() -> None:
 
     ids = [_correct_kraken_id(x) for x in ids]
 
+    calc_dir = Path(args.calc_dir)
+    calc_dir.mkdir(exist_ok=True)
+
     logging.basicConfig(
         level=logging.DEBUG if args.debug else logging.INFO,
         format='[%(levelname)-5s - %(asctime)s] [%(module)s] %(message)s',
@@ -148,19 +142,24 @@ def main() -> None:
 
     # Iterate over the input
     for id, smiles, conversion_flag in zip(ids, inputs, conversion_flags):
-        dest = Path(f'./{id}_dft.slurm')
+        dest = Path(f'./{id}_conf.slurm')
 
         # Write the jobfile
-        jobfile = write_dft_job_file(kraken_id=id,
-                                     directory=args.calc_dir,
-                                     destination=dest,
-                                     template=SLURM_TEMPLATE,
-                                     nprocs=args.nprocs,
-                                     mem=args.mem,
-                                     force=args.force)
+        jobfile = write_job_file(kraken_id=id,
+                                 smiles=smiles,
+                                 conversion_flag=conversion_flag,
+                                 directory=calc_dir,
+                                 destination=dest,
+                                 template=SLURM_TEMPLATE,
+                                 nprocs=args.nprocs,
+                                 mem=args.mem)
 
         # Submit it to SLURM
         subprocess.run(args=['sbatch', jobfile.name], cwd=jobfile.parent, check=False)
 
 if __name__ == "__main__":
     main()
+
+
+
+

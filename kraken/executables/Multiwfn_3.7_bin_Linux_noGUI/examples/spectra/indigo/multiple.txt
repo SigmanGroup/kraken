@@ -1,3 +1,0 @@
-examples\spectra\indigo\ZINDO.out ZINDO
-examples\spectra\indigo\TD-PBE0.out TD-PBE0/6-31G*
-examples\spectra\indigo\TD-PBE0_TZVP.out TD-PBE0/def-TZVP

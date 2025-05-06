@@ -894,7 +894,7 @@ def combine_yaml(molname: str,
                 "qvtot_max", "max_delta_qvbur", "max_delta_qvtot", "ovbur_min", "ovbur_max", "ovtot_min",
                 "ovtot_max", "vbur", "vtot", "near_vbur", "far_vbur", "near_vtot", "far_vtot"]
 
-    datagroups_vec=["muls", "wils", "fukui", "alphas"]
+    datagroups_vec = ["muls", "wils", "fukui", "alphas"]
 
     ligand_data = {}
 
@@ -921,11 +921,7 @@ def combine_yaml(molname: str,
     logger.debug('In combine_yaml: p_idx: %s', str(p_idx))
 
     for key in datagroups_vec:
-        logger.debug('In combine_yaml: KEY: %s', str(key))
-        try:
-            logger.debug('\t%s', str(ligand_data[molname][key]))
-        except KeyError as e:
-            logger.error('Could not find key %s in ligand_data[%s][%s]', key, molname, key)
+        logger.debug('In combine_yaml datagroups_vec: KEY: %s', str(key))
         ligand_data[molname][key] = data_here["boltzmann_averaged_data"][key][p_idx]
 
     # read the conformer results files to get more information about each single conformer

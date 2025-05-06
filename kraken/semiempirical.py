@@ -99,7 +99,7 @@ def run_crest(file: Path,
               add_Pd_Cl2: bool,
               add_Pd_Cl2_PH3: bool,
               add_Ni_CO_3: bool,
-              ):
+              ) -> tuple[bool, bool, list, list, list, list, list[dict], list]:
     '''
     Primary function for running CREST/xTB and
     extracting relevant information.
@@ -282,23 +282,24 @@ def run_crest(file: Path,
                 logger.debug('len(dummy_positions): %d', len(dummy_positions))
 
                 #print(xtb_done_here,dummy_position_done_here)
-                electronic_properties_conformers.append({"muls":muls,
-                                                         "alphas":alphas,
-                                                         "wils":wils,
-                                                         "dip":dip,
-                                                         "alpha":alpha,
-                                                         "dummy_positions":dummy_positions,
-                                                         "fukui":fukui,
-                                                         "HOMO_LUMO_gap":HOMO_LUMO_gap,
-                                                         "IP_delta_SCC":IP_delta_SCC,
-                                                         "EA_delta_SCC":EA_delta_SCC,
-                                                         "global_electrophilicity_index":global_electrophilicity_index,
-                                                         "esp_profile":esp_profile,
-                                                         "esp_points":esp_points,
-                                                         "occ_energies":occ_energies,
-                                                         "virt_energies":virt_energies,
-                                                         "nucleophilicity":nucleophilicity
+                electronic_properties_conformers.append({'muls': muls,
+                                                         'alphas': alphas,
+                                                         'wils': wils,
+                                                         'dip': dip,
+                                                         'alpha': alpha,
+                                                         'dummy_positions': dummy_positions,
+                                                         'fukui': fukui,
+                                                         'HOMO_LUMO_gap': HOMO_LUMO_gap,
+                                                         'IP_delta_SCC': IP_delta_SCC,
+                                                         'EA_delta_SCC': EA_delta_SCC,
+                                                         'global_electrophilicity_index': global_electrophilicity_index,
+                                                         'esp_profile': esp_profile,
+                                                         'esp_points': esp_points,
+                                                         'occ_energies': occ_energies,
+                                                         'virt_energies': virt_energies,
+                                                         'nucleophilicity': nucleophilicity
                                                          })
+
                 #conf_idx+=1
                 #print("did conf %i, len of data: %i"%(conf_idx,len(electronic_properties_conformers)))
                 coords_all_used.append(coords_all[conf_idx])
@@ -312,7 +313,7 @@ def run_crest(file: Path,
         logger.error('CREST appears to have not completed.')
         electronic_properties_conformers = []
 
-    time3=time.time()
+    time3 = time.time()
 
     time_xtb_sterimol = time3-crest_end_time
 

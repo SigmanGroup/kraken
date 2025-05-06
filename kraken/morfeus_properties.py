@@ -2,7 +2,8 @@
 # coding: utf-8
 
 '''
-Code for running properties with MORFEUS
+Code for running properties with MORFEUS for the
+conformer search part of Kraken
 '''
 
 from __future__ import print_function
@@ -115,7 +116,7 @@ def run_morfeus(coords: NDArray,
         neighbor_indeces = [i for i in np.argsort(atom_distances_to_p)[1:4] if i != pd_idx]
 
         if len(neighbor_indeces) != 3:
-            logger.warning('Found %d neigbors instead of 3 on %s for %s', len(neighbor_indeces, metal_char, conf_dir.name))
+            logger.warning('Found %d neigbors instead of 3 on %s for %s', len(neighbor_indeces), metal_char, conf_dir.name)
 
             # Turn off pyramidalization
             do_pyramid = False

@@ -24,26 +24,32 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)]
 )
 
-DESCRIPTION = r"""
+logger = logging.getLogger(__name__)
+
+DESCRIPTION = '''
+╔══════════════════════════════════════╗
+║   | |/ / _ \  /_\ | |/ / __| \| |    ║
+║   | ' <|   / / _ \| ' <| _|| .` |    ║
+║   |_|\_\_|_\/_/ \_\_|\_\___|_|\_|    ║
+╚══════════════════════════════════════╝
 
 
-               ╔══════════════════════════════════════╗
-               ║   | |/ / _ \  /_\ | |/ / __| \| |    ║
-               ║   | ' <|   / / _ \| ' <| _|| .` |    ║
-               ║   |_|\_\_|_\/_/ \_\_|\_\___|_|\_|    ║
-               ╚══════════════════════════════════════╝
+Kolossal viRtual dAtabase for moleKular dEscriptors
+of orgaNophosphorus ligands.
+
+CLI SCRIPT
+
+This script moves DFT files (.com, .chk, .log, .wfn) from
+Kraken calculation directories to a single directory for
+easy submission to HPC systems. Specify the directory that
+contains subdirectories named with Kraken IDs. These Kraken
+ID directories should have the following structure.
 
 
-        Kolossal viRtual dAtabase for moleKular dEscriptors
-                     of orgaNophosphorus ligands.
+<INPUT_DIR>/<KRAKEN_ID>/dft/
+'''
 
-                              CLI SCRIPT
-
-        This script extracts DFT files (.com, .chk, .log, .wfn)
-        from Kraken calculation directories to a single directory
-        for easy submission to HPC systems.
-
-              """
+DESCRIPTION = '\n'.join(line.center(80) for line in DESCRIPTION.strip('\n').split('\n'))
 
 def get_args() -> argparse.Namespace:
     '''Gets the arguments for running Kraken'''
@@ -65,7 +71,7 @@ def get_args() -> argparse.Namespace:
                         dest='input',
                         required=True,
                         type=Path,
-                        help='Input directory that contains the .com, .chk, .log, .wfn files.',
+                        help='Input directory that contains the subdirectories <KRAKEN_ID>/dft/\n\n',
                         metavar='DIR')
 
     parser.add_argument('-d', '--destination',
@@ -96,7 +102,6 @@ def main():
     '''
     Main function
     '''
-    logger = logging.getLogger(__name__)
 
     args = get_args()
 

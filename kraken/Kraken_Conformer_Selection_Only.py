@@ -33,23 +33,9 @@ obConversion.SetInAndOutFormats('xyz', 'sdf')
 
 logger = logging.getLogger(__name__)
 
-# Import the Cython jazz
-import pyximport
-#pyximport.install()
-
-# This file must be located in the cwd #TODO, change relative path?
-#import ConfPruneIdx as ConfPrune
-
-import importlib.util
-
-module_path = '/uufs/chpc.utah.edu/common/home/u6053008/kraken/kraken/ConfPruneIdx.cpython-311-x86_64-linux-gnu.so'
-
-spec = importlib.util.spec_from_file_location('ConfPruneIdx', module_path)
-ConfPrune = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(ConfPrune)
-
 from .gaussian_input import write_coms
 from .geometry import mirror_mol
+from .ConfPruneIdx import StrictRMSDPrune
 
 # This covalent radius data differs from the one in kraken.utils
 # In utils, H rcov = 0.34 whereas here it is 0.32
@@ -298,14 +284,27 @@ def select_MinMax(suffixes, energies, coords_all, elements_all, properties_all, 
     # Multilevel index with suffix at the first level and the conformer index at the second level
     properties_df = pd.concat([pd.DataFrame(properties_all[suffix]) for suffix in suffixes], keys=suffixes)
 
-    # Get the list of properties that are not problematic
+    # Get the series of properties that are not problematic
     nonproblematic_properties = ~properties_df[Sel.usepropsminmax].isna().any()
 
     # Make sure that these values are all True, otherwise there is a
     # problematic property in there
-    assert all(nonproblematic_properties)
+    if not all(nonproblematic_properties):
+        logger.error('In select_MinMax: nonproblematic_properties: %s', str(nonproblematic_properties))
 
-    nonproblematic_properties_names = list(nonproblematic_properties.keys())
+        # Make a new list of nonproblematic_props
+        new_nonproblematic = []
+
+        # Iterate through the nonproblematic_properties
+        for prop, is_nonproblematic in nonproblematic_properties.items():
+            if is_nonproblematic:
+                new_nonproblematic.append(prop)
+            else:
+                logger.error('Cannot select conformers based on %s', prop)
+
+        nonproblematic_properties_names = new_nonproblematic
+    else:
+        nonproblematic_properties_names = list(nonproblematic_properties.keys())
 
     #print(f'[DEBUG] nonproblematic_properties_names: {nonproblematic_properties_names}')
 

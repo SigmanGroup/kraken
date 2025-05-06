@@ -20,36 +20,30 @@ from pathlib import Path
 
 KRAKEN_CALC_FILE_EXTENSIONS = ['.com', '.gjf', '.log', '.chk', '.fchk', '.wfn', '.error', '.output', '.slurm', '.slr']
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='[%(levelname)-5s - %(asctime)s] [%(module)s] %(message)s',
-    datefmt='%m/%d/%Y:%H:%M:%S',  # Correct way to format the date
-    handlers=[logging.StreamHandler(sys.stdout)]
-)
+logger = logging.getLogger(__name__)
 
-DESCRIPTION = r"""
-
-
-               ╔══════════════════════════════════════╗
-               ║   | |/ / _ \  /_\ | |/ / __| \| |    ║
-               ║   | ' <|   / / _ \| ' <| _|| .` |    ║
-               ║   |_|\_\_|_\/_/ \_\_|\_\___|_|\_|    ║
-               ╚══════════════════════════════════════╝
+DESCRIPTION = '''
+╔══════════════════════════════════════╗
+║   | |/ / _ \  /_\ | |/ / __| \| |    ║
+║   | ' <|   / / _ \| ' <| _|| .` |    ║
+║   |_|\_\_|_\/_/ \_\_|\_\___|_|\_|    ║
+╚══════════════════════════════════════╝
 
 
-        Kolossal viRtual dAtabase for moleKular dEscriptorsclear
-                     of orgaNophosphorus ligands.
+Kolossal viRtual dAtabase for moleKular dEscriptors
+of orgaNophosphorus ligands.
 
-                              CLI SCRIPT
+CLI SCRIPT
 
-        This script moves DFT files (.com, .chk, .log, .wfn)
-       from a generic directory used to run calculations and
-         places the resultant files into Kraken calculation
-                 that are specified by <KRAKEN_ID>/dft/
+This script moves DFT files (.com, .chk, .log, .wfn)
+from a generic directory used to run the calculations
+and places the required files into Kraken ID directories
+that have the follwing structure.
 
+<DESTINATION_DIR>/<KRAKEN_ID>/dft/
+'''
 
-
-              """
+DESCRIPTION = '\n'.join(line.center(80) for line in DESCRIPTION.strip('\n').split('\n'))
 
 def get_args() -> argparse.Namespace:
     '''Gets the arguments for running Kraken'''
@@ -70,14 +64,14 @@ def get_args() -> argparse.Namespace:
                         dest='input',
                         required=True,
                         type=Path,
-                        help='Input directory that contains the .com, .chk, .log, .wfn files.\n',
+                        help='Input directory that contains the .com, .chk, .log, .wfn files.\n\n',
                         metavar='DIR')
 
     parser.add_argument('-d', '--destination',
                         dest='destination',
                         required=True,
                         type=Path,
-                        help='Parent path that contains directories oranized like <KRAKEN_ID>/dft/\n',
+                        help='Parent path that contains directories oranized like <KRAKEN_ID>/dft/\n\n',
                         metavar='DIR')
 
     parser.add_argument('--skip-kraken-ids',
@@ -91,6 +85,10 @@ def get_args() -> argparse.Namespace:
     parser.add_argument('--dry',
                         action='store_true',
                         help='Disables movement of files for debugging purposes.\n\n')
+
+    parser.add_argument('--debug',
+                        action='store_true',
+                        help='Enables debug printing.\n\n')
 
     args = parser.parse_args()
 
@@ -113,9 +111,15 @@ def main():
     '''
     Main function
     '''
-    logger = logging.getLogger(__name__)
 
     args = get_args()
+
+    logging.basicConfig(
+        level=logging.DEBUG if args.debug else logging.INFO,
+        format='[%(levelname)-5s - %(asctime)s] [%(module)s] %(message)s',
+        datefmt='%m/%d/%Y:%H:%M:%S',
+        handlers=[logging.StreamHandler(sys.stdout)]
+    )
 
     # Make the inputs Path objects
     calc_dir = Path(args.input)
@@ -124,11 +128,11 @@ def main():
     # Get all the files
     files = [x for x in calc_dir.glob('*') if x.is_file() and x.suffix in KRAKEN_CALC_FILE_EXTENSIONS]
 
-    logger.debug('There are %d files to move in total', len(files))
+    logger.info('There are %d files to move in total', len(files))
 
     # Get the coms for debugging
     com_files = [x for x in calc_dir.glob('*.com') if x.is_file()]
-    logger.debug('There are %d .com files to move', len(com_files))
+    logger.info('There are %d .com files to move', len(com_files))
 
     # Get all the stems
     stems = [x.stem for x in files]
@@ -150,7 +154,7 @@ def main():
 
     kraken_ids = sorted(list(set(kraken_ids)))
 
-    logger.debug('Kraken IDs to move: %s', str(kraken_ids))
+    logger.info('Kraken IDs to move: %s', str(kraken_ids))
 
     # Iterate through the kraken IDs
     for kraken_id in kraken_ids:
