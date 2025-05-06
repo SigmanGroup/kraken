@@ -2,7 +2,7 @@
 #SBATCH --partition=sigman-np
 #SBATCH --account=sigman-np
 #SBATCH --qos=sigman-low-np
-#SBATCH --time=6:00:00
+#SBATCH --time=$TIME:00:00
 #SBATCH --ntasks=$NPROCS
 #SBATCH --mem=$MEMG
 #SBATCH -o kraken_dft_$KID-%j.log

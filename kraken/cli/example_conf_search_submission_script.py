@@ -74,6 +74,12 @@ def get_args() -> argparse.Namespace:
                         help='Amount of memory in GB to request\n\n',
                         metavar='INT')
 
+    parser.add_argument('-t', '--time',
+                        dest='time',
+                        default=8,
+                        help='Time requested in hours\n\n',
+                        metavar='INT')
+
     parser.add_argument('--calculation-dir',
                         dest='calc_dir',
                         default='./data/',
@@ -94,6 +100,7 @@ def write_job_file(kraken_id: str,
                    smiles: str,
                    conversion_flag: int,
                    directory: Path,
+                   time: int,
                    destination: Path,
                    template: Path,
                    nprocs: int,
@@ -110,6 +117,7 @@ def write_job_file(kraken_id: str,
     text = re.sub(r'\$CONVERSION_FLAG', str(conversion_flag), text)
     text = re.sub(r'\$NPROCS', str(nprocs), text)
     text = re.sub(r'\$MEM', str(mem), text)
+    text = re.sub(r'\$TIME', str(time), text)
     text = re.sub(r'\$DIR', str(directory.absolute()), text)
 
     with open(destination, 'w', encoding='utf-8') as o:
@@ -149,6 +157,7 @@ def main() -> None:
                                  smiles=smiles,
                                  conversion_flag=conversion_flag,
                                  directory=calc_dir,
+                                 time=args.time,
                                  destination=dest,
                                  template=SLURM_TEMPLATE,
                                  nprocs=args.nprocs,
