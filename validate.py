@@ -20,6 +20,7 @@ from typing import List
 from reportlab.lib import colors
 from reportlab.platypus import Table, Spacer, Paragraph, TableStyle
 from reportlab.platypus import SimpleDocTemplate, Image, PageBreak
+from reportlab.lib.units import inch
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus.flowables import Flowable
 from reportlab.lib.styles import getSampleStyleSheet
@@ -261,9 +262,10 @@ def plot_xy_with_fit(x: list[float],
                      xlabel: str,
                      ylabel: str,
                      title: str,
-                     save: Path | None = None) -> None:
+                     save: Path | None = None) -> Image | None:
     '''
     Plot x vs. y with a line of best fit, including the linear equation and R² on the plot.
+    If save is None, return a ReportLab Image object for use in PDF generation.
 
     Parameters
     ----------
@@ -278,7 +280,12 @@ def plot_xy_with_fit(x: list[float],
     title: str
         Title of the plot.
     save: Path | None
-        File path to save the figure. If None, the figure is shown instead.
+        File path to save the figure. If None, the figure is returned as a ReportLab Image.
+
+    Returns
+    -------
+    Image | None
+        ReportLab Image object if save is None, otherwise None.
     '''
     x = np.array(x)
     y = np.array(y)
@@ -305,8 +312,13 @@ def plot_xy_with_fit(x: list[float],
     if save is not None:
         fig.savefig(save, dpi=300)
         plt.close(fig)
+        return None
     else:
-        plt.show()
+        buf = BytesIO()
+        fig.savefig(buf, format='png', dpi=300)
+        plt.close(fig)
+        buf.seek(0)
+        return Image(buf, width=6*inch, height=4*inch)
 
 def main():
     new_yaml_dir = Path('./validation/new_dft_yamls/')
@@ -459,6 +471,8 @@ def main():
         df = df[df['rel_diff (%)'] >= rel_dif_thresh].sort_values('rel_diff (%)', ascending=False)
         flagged_properties.extend(list(df.index))
 
+    # Add properties to the report
+    doc_elements.append(Paragraph(f'Linear regressions for all properties with at least 1% difference in any tested monophosphine', styles['Heading1']),)
     for _prop in list(set(flagged_properties)):
         print(_prop)
 
@@ -474,16 +488,16 @@ def main():
             print(f'{_prop} had all 0s for _old_vals. Skipping. {_old_vals}')
             continue
 
-        plot_xy_with_fit(x=_old_vals,
-                         y=_new_vals,
-                         xlabel=f'{_prop} (old)',
-                         ylabel=f'{_prop} (new)',
-                         title=_prop,
-                         save=Path(f'./validation/{_prop}.png'))
+        reg_plot = plot_xy_with_fit(x=_old_vals,
+                                    y=_new_vals,
+                                    xlabel=f'{_prop} (old)',
+                                    ylabel=f'{_prop} (new)',
+                                    title=_prop,
+                                    save=None) # Path(f'./validation/{_prop}.png')
+
+        doc_elements.append(reg_plot)
 
 
-
-    exit()
     create_pdf('./validation/validation_report.pdf', doc_elements)
 
 
