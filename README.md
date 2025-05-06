@@ -41,147 +41,125 @@ These instructions are for Sigman group members to submit batches of calculation
 see (and modify) the SLURM templates in the `kraken/slurm_templates` directory to accommodate your job scheduler. Please note that special symbols exist in the SLURM templates
 that are substituted with actual values required by SLURM including `$KID`, `$NPROCS`, `$MEM`, and several others.
 
-1. Format a .csv file that contains your monophosphine SMILES string, kraken id, and conversion flag.
+1. Format a `.csv` file that contains your monophosphine SMILES string, kraken id, and conversion flag:
 
+    | KRAKEN_ID | SMILES           | CONVERSION_FLAG |
+    |-----------|------------------|-----------------|
+    | 5039      | CP(C)C           | 4               |
+    | 10596     | CP(C1=CC=CC=C1)C | 4               |
+    | ...       | ...              | ...             |
 
-        +-----------+------------------+-----------------+
-        | KRAKEN_ID | SMILES           | CONVERSION_FLAG |
-        +-----------+------------------+-----------------+
-        | 5039      | CP(C)C           | 4               |
-        | 10596     | CP(C1=CC=CC=C1)C | 4               |
-        | ...       | ...              | ...             |
-        +-----------+------------------+-----------------+
-
-
-2. Run the example submission script with your requested inputs and configurations for the SLURM job. This will split your CSV file into individual conformer searches
-   and submit them to nodes as their own job. The conformer searches are quick and not too computationally demanding, so use resources sparingly.
+2. Run the example submission script with your requested inputs and configurations:
 
     ```bash
     example_conf_search_submission_script.py --csv small_molecules.csv --nprocs 8 --mem 16 --time 6 --calculation-dir ./data/ --debug
     ```
 
-3. Once all jobs are complete, inspect the individual SLURM logfiles to ensure that each one terminated properly. You can search the SLURM logfiles for logging errors (search for "ERROR")
-   and warnings (search for "WARNING"). If the jobs did not complete, be sure to check the .error file produced by SLURM and raise an issue on this repository.
+3. After completion, inspect SLURM log files (`*.log`, `*.error`) for errors/warnings (`ERROR`, `WARNING`).
 
-4. After all jobs complete successfully, use the included CLI scripts that are installed along with Kraken to move your .com files into a common directory so you can submit them
-   all at once instead of navigating to the individual `<KRAKEN_ID>/dft/` directories.
+4. Use the CLI utilities provided by Kraken if you wish to run all of your calculations from one directory (recommended):
 
-   a. For your convenience, CLI scripts have been included to move the DFT files from the `<KRAKEN_ID>/dft/` directory to somewhere else if you
-      wish to run all of these calculations in another directory (or on another system entirely). This can be executed with the following command.
+    a. Move DFT files to a common directory:
 
-      ```bash
-      extract_dft_files.py --input ./data/ --destination ./dft_calculation_folder_for_convenience/
-      ```
+        ```bash
+        extract_dft_files.py --input ./data/ --destination ./dft_calculation_folder_for_convenience/
+        ```
 
-   b. Use the group submission scripts to run the DFT calculations.
+    b. Submit DFT calculations:
 
-      ```bash
-      for i in *.com; do subg16 $i -c sigman -m 32 -p 16 -t 12; done
-      ```
+        ```bash
+        for i in *.com; do subg16 $i -c sigman -m 32 -p 16 -t 12; done
+        ```
 
-   c. After completing all DFT calculations, you can return the results of the calculations to the appropriate `<KRAKEN_ID>/dft/` directories with
-      a complementary script like this.
+    c. Return results to their directories:
 
-      ```bash
-      return_dft_files.py --input ./dft_calculation_folder_for_convenience/ --destination ./data/
-      ```
-5. The DFT jobs should be evaluated for completeness and errors before returning them to the `<KRAKEN_ID>/dft/` directories. Kraken can accomodate some errors, but error handling
-   is not fully tested. We recommend using [this tool to check your Gaussian16 log files](https://github.com/thejameshoward/GaussianLogfileAssessor.git). If your jobs are not converging
-   or have imaginary frequencies, try implementing the CalcAll keyword in your optimization job in the `.com` file.
+        ```bash
+        return_dft_files.py --input ./dft_calculation_folder_for_convenience/ --destination ./data/
+        ```
 
-6. The DFT portion of the Kraken workflow can then be submitted to the compute nodes.
+5. Evaluate DFT jobs for errors. For help, use [GaussianLogfileAssessor](https://github.com/thejameshoward/GaussianLogfileAssessor.git).
+
+6. Submit the DFT portion of the Kraken workflow:
 
     ```bash
     example_dft_submission_script.py --csv small_molecules.csv --nprocs 8 --mem 16 --time 6 --calculation-dir ./data/ --debug
     ```
 
-7. Check the resulting SLURM .log and .error files for any indication that the individual SLURM jobs failed. If there is an unhandled error, be sure to raise an issue on this repository.
+7. Check SLURM `.log` and `.error` files and raise an issue on this repo if necessary.
 
 ## Example Usage (directly running on a compute node)
 
-1. Format a .csv file that contains your monophosphine SMILES string, kraken id, and conversion flag.
+1. Format a `.csv` file that contains your monophosphine SMILES string, KRAKEN_ID, and CONVERSION_FLAG:
 
+    | KRAKEN_ID | SMILES           | CONVERSION_FLAG |
+    |-----------|------------------|-----------------|
+    | 5039      | CP(C)C           | 4               |
+    | 10596     | CP(C1=CC=CC=C1)C | 4               |
+    | ...       | ...              | ...             |
 
-        +-----------+------------------+-----------------+
-        | KRAKEN_ID | SMILES           | CONVERSION_FLAG |
-        +-----------+------------------+-----------------+
-        | 5039      | CP(C)C           | 4               |
-        | 10596     | CP(C1=CC=CC=C1)C | 4               |
-        | ...       | ...              | ...             |
-        +-----------+------------------+-----------------+
-
-
-2.  Run the first Kraken script on a .csv file containing the columns 'SMILES', 'KRAKEN_ID', and 'CONVERSION_FLAG'. Here are two examples. <br>
+2. Run the first Kraken script on a `.csv` file containing the columns `SMILES`, `KRAKEN_ID`, and `CONVERSION_FLAG`:
 
     ```bash
     run_kraken_conf_search.py -i ./data/input_file.csv --nprocs 4 --calculation-dir ./data/ --debug > kraken_conf_search.log
     ```
 
-3. Once that script terminates, you can navigate to the calculation-dir (in this case `./data`) and find the directories for your Kraken conformer
-   search calculations. The `<KRAKEN_ID>/dft/` directory contains the `.com` files that should be run with Gaussian16. You can run these directly
-   in the existing `<KRAKEN_ID>/dft/` directory, or follow the steps below if you have many different monophosphines to evaluate.
+3. After the script terminates, navigate to `./data/` to find the conformer search directories. Each `<KRAKEN_ID>/dft/` folder contains the `.com` files
+   for Gaussian16. You can run them directly in-place or follow the steps below if evaluating many ligands:
 
-   a. For your convenience, CLI scripts have been included to move the DFT files from the `<KRAKEN_ID>/dft/` directory to somewhere else if you
-      wish to run all of these calculations in another directory (or on another system entirely). This can be executed with the following command.
+    a. Move DFT input files to a centralized directory:
 
-      ```bash
-      extract_dft_files.py --input ./data/ --destination ./dft_calculation_folder_for_convenience/
-      ```
+        ```bash
+        extract_dft_files.py --input ./data/ --destination ./dft_calculation_folder_for_convenience/
+        ```
 
-   b. After completing all DFT calculations, you can return the results of the calculations to the appropriate `<KRAKEN_ID>/dft/` directories with
-      a complementary script like this.
+    b. After running the DFT calculations, return the results to their original locations:
 
-      ```bash
-      return_dft_files.py --input ./dft_calculation_folder_for_convenience/ --destination ./data/
-      ```
+        ```bash
+        return_dft_files.py --input ./dft_calculation_folder_for_convenience/ --destination ./data/
+        ```
 
-4. After completing all DFT calculations and ensuring the requisite .log, .chk, and .wfn files are present in the correct `<KRAKEN_ID>/dft/` directories,
-   the final step of the workflow can be executed with the `run_kraken_dft.py` script. This script must be run on each Kraken ID directory directly (i.e.,
-   it does not currently support the .csv input). In the example below, one of the entries (KID 90000001) is processed with the script.
-
-   Note that the `--force` flag ensures that if there is a problem with this script and it must be run again, all steps will be performed and no files
-   will be read from potentially incomplete runs.
+4. After confirming the `.log`, `.chk`, and `.wfn` files are present in `<KRAKEN_ID>/dft/`, run the final Kraken DFT processing step.
+   This step operates on individual Kraken IDs (CSV input is not supported):
 
     ```bash
     run_kraken_dft.py --kid 90000001 --dir ./data/ --nprocs 4 --force > kraken_dft_processing_90000001.log
     ```
 
-5. The resulting `.yml` files from both the CREST conformer search portion and the DFT processing portion of the Kraken workflow will exist in the `<KRAKEN_ID>`
-   directory. In the present case, this directory's path is `./data/<KRAKEN_ID>` because we specified flags like `--calculation-dir` and `--dir` to be `./data` in
-   previous steps. The final results will look something like this.
+5. Final `.yml` output files from both the CREST and DFT steps will be found in `./data/<KRAKEN_ID>/`:
 
-```
-./90000001/
-├── 90000001_confdata.yml
-├── 90000001_data.yml
-├── 90000001_Ni_combined.yml
-├── 90000001_Ni_confs.yml
-├── 90000001_Ni.yml
-├── 90000001_noNi_combined.yml
-├── 90000001_noNi_confs.yml
-├── 90000001_noNi.yml
-├── 90000001_relative_energies.csv
-├── crest_calculations
-│   ├── 90000001_Ni
-│   └── 90000001_noNi
-├── dft
-│   ├── 90000001_errors.txt
-│   ├── 90000001_noNi_00000
-│   ├── 90000001_noNi_00001
-│   ├── 90000001_noNi_00002
-│   ├── 90000001_noNi_00003
-│   ├── 90000001_noNi_00004
-│   ├── 90000001_noNi_00005
-│   ├── 90000001_noNi_00006
-│   ├── 90000001_noNi_00007
-│   ├── 90000001_noNi_00009
-│   ├── confselection_minmax_Ni.txt
-│   ├── confselection_minmax_noNi.txt
-│   ├── fort.7
-│   ├── rmsdmatrix.csv
-│   └── selected_conformers
-└── xtb_scr_dir
-```
+    ```
+    ./90000001/
+    ├── 90000001_confdata.yml
+    ├── 90000001_data.yml
+    ├── 90000001_Ni_combined.yml
+    ├── 90000001_Ni_confs.yml
+    ├── 90000001_Ni.yml
+    ├── 90000001_noNi_combined.yml
+    ├── 90000001_noNi_confs.yml
+    ├── 90000001_noNi.yml
+    ├── 90000001_relative_energies.csv
+    ├── crest_calculations
+    │   ├── 90000001_Ni
+    │   └── 90000001_noNi
+    ├── dft
+    │   ├── 90000001_errors.txt
+    │   ├── 90000001_noNi_00000
+    │   ├── 90000001_noNi_00001
+    │   ├── 90000001_noNi_00002
+    │   ├── 90000001_noNi_00003
+    │   ├── 90000001_noNi_00004
+    │   ├── 90000001_noNi_00005
+    │   ├── 90000001_noNi_00006
+    │   ├── 90000001_noNi_00007
+    │   ├── 90000001_noNi_00009
+    │   ├── confselection_minmax_Ni.txt
+    │   ├── confselection_minmax_noNi.txt
+    │   ├── fort.7
+    │   ├── rmsdmatrix.csv
+    │   └── selected_conformers
+    └── xtb_scr_dir
+    ```
+
 
 ## Citations
 Please cite the original kraken publication if you used this software. The executables for Multiwfn, dftd3, and dftd4 are included
