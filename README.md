@@ -25,7 +25,7 @@ __A detailed report comparing 28 monophosphines from the original Kraken workflo
     conda activate kraken
     ```
 
-3. [Download an appropriate version of xtb and crest](https://github.com/crest-lab/crest). The precompiled versions
+3. (Optional) [Download an appropriate version of xtb and crest](https://github.com/crest-lab/crest). The precompiled versions
    for xtb v6.6.0 and crest v2.12 worked in our testing. Alternatively, CHPC users can use `module load crest/2.12` to
    load xTB v6.4.0 and CREST v2.12.
 
@@ -36,6 +36,49 @@ __A detailed report comparing 28 monophosphines from the original Kraken workflo
     ```bash
     pip install .
     ```
+## Example Usage (submission to CHPC for the Sigman group)
+These instructions are for Sigman group members to submit batches of calculations to the Sigman owner nodes on Notchpeak. For other users outside of the Sigman group, please
+see (and modify) the SLURM templates in the `kraken/slurm_templates` directory to accommodate your job scheduler. Please note that special symbols exist in the SLURM templates
+that are substituted actual values required by SLURM including `$KID`, `$NPROCS`, `$MEM`, and several others.
+
+1. Run the example submission script with your requested inputs and configurations for the SLURM job. This will split your CSV file into individual conformer searches
+   and submit them to nodes as their own job. Please note, that the conformer searches are relatively quick and not too computationally intensive, so use resources sparingly.
+
+    ```bash
+    example_conf_search_submission_script.py --csv small_molecules.csv --nprocs 8 --mem 16 --time 6 --calculation-dir ./data/ --debug
+    ```
+
+2. Once all jobs are complete, inspect the individual SLURM logfiles to ensure that each one terminated properly. You can search the SLURM logfiles for logging errors (search for "ERROR")
+   and warnings (search for "WARNING"). If the jobs did not complete, be sure to check the .error file produced by SLURM and raise an issue on this repository.
+
+3. After all jobs completed successfully, use the included CLI scripts that are installed along with Kraken to move your .com files into a common directory so you can submit them
+   all at once instead of navigating to the individual `<KRAKEN_ID>/dft/` directories.
+
+   a. For your convenience, CLI scripts have been included to move the DFT files from the `<KRAKEN_ID>/dft/` directory to somewhere else if you
+      wish to run all of these calculations in another directory (or on another system entirely). This can be executed with the following command.
+
+      ```bash
+      extract_dft_files.py --input ./data/ --destination ./dft_calculation_folder_for_convenience/
+      ```
+
+   b. After completing all DFT calculations, you can return the results of the calculations to the appropriate `<KRAKEN_ID>/dft/` directories with
+      a complementary script like this.
+
+      ```bash
+      return_dft_files.py --input ./dft_calculation_folder_for_convenience/ --destination ./data/
+      ```
+4. The DFT jobs should be evaluated for completeness and errors before returning them to the `<KRAKEN_ID>/dft/` directories. Kraken can accomodate some errors, but error handling
+   is not fully tested. We recommend using [this tool to check your Gaussian16 log files](https://github.com/thejameshoward/GaussianLogfileAssessor.git). If your jobs are not converging
+   or have imaginary frequencies, try implementing the CalcAll keyword in your optimization job in the `.com` file.
+
+5. The DFT portion of the Kraken workflow can then be submitted to the compute nodes similarly to the conformer search portion.
+
+    ```bash
+    example_dft_submission_script.py --csv small_molecules.csv --nprocs 8 --mem 16 --time 6 --calculation-dir ./data/ --debug
+    ```
+
+6. Check the resulting SLURM .log and .error files for any indication that the individual SLURM jobs failed. If there is an unhandled error, be sure to raise an issue on this repository.
+
 ## Example Usage (directly running on a compute node)
 
 1. Format a .csv file that contains your monophosphine SMILES string, kraken id, and conversion flag.
@@ -121,48 +164,6 @@ __A detailed report comparing 28 monophosphines from the original Kraken workflo
 │   └── selected_conformers
 └── xtb_scr_dir
 ```
-## Example Usage (submission to CHPC for the Sigman group)
-These instructions are for Sigman group members to submit batches of calculations to the Sigman owner nodes on Notchpeak. For other users outside of the Sigman group, please
-see (and modify) the SLURM templates in the `kraken/slurm_templates` directory to accommodate your job scheduler. Please note that special symbols exist in the SLURM templates
-that are substituted actual values required by SLURM including `$KID`, `$NPROCS`, `$MEM`, and several others.
-
-1. Run the example submission script with your requested inputs and configurations for the SLURM job. This will split your CSV file into individual conformer searches
-   and submit them to nodes as their own job. Please note, that the conformer searches are relatively quick and not too computationally intensive, so use resources sparingly.
-
-    ```bash
-    example_conf_search_submission_script.py --csv small_molecules.csv --nprocs 8 --mem 16 --time 6 --calculation-dir ./data/ --debug
-    ```
-
-2. Once all jobs are complete, inspect the individual SLURM logfiles to ensure that each one terminated properly. You can search the SLURM logfiles for logging errors (search for "ERROR")
-   and warnings (search for "WARNING"). If the jobs did not complete, be sure to check the .error file produced by SLURM and raise an issue on this repository.
-
-3. After all jobs completed successfully, use the included CLI scripts that are installed along with Kraken to move your .com files into a common directory so you can submit them
-   all at once instead of navigating to the individual `<KRAKEN_ID>/dft/` directories.
-
-   a. For your convenience, CLI scripts have been included to move the DFT files from the `<KRAKEN_ID>/dft/` directory to somewhere else if you
-      wish to run all of these calculations in another directory (or on another system entirely). This can be executed with the following command.
-
-      ```bash
-      extract_dft_files.py --input ./data/ --destination ./dft_calculation_folder_for_convenience/
-      ```
-
-   b. After completing all DFT calculations, you can return the results of the calculations to the appropriate `<KRAKEN_ID>/dft/` directories with
-      a complementary script like this.
-
-      ```bash
-      return_dft_files.py --input ./dft_calculation_folder_for_convenience/ --destination ./data/
-      ```
-4. The DFT jobs should be evaluated for completeness and errors before returning them to the `<KRAKEN_ID>/dft/` directories. Kraken can accomodate some errors, but error handling
-   is not fully tested. We recommend using [this tool to check your Gaussian16 log files](https://github.com/thejameshoward/GaussianLogfileAssessor.git). If your jobs are not converging
-   or have imaginary frequencies, try implementing the CalcAll keyword in your optimization job in the `.com` file.
-
-5. The DFT portion of the Kraken workflow can then be submitted to the compute nodes similarly to the conformer search portion.
-
-    ```bash
-    example_dft_submission_script.py --csv small_molecules.csv --nprocs 8 --mem 16 --time 6 --calculation-dir ./data/ --debug
-    ```
-
-6. Check the resulting SLURM .log and .error files for any indication that the individual SLURM jobs failed. If there is an unhandled error, be sure to raise an issue on this repository.
 
 ## Citations
 Please cite the original kraken publication if you used this software. The executables for Multiwfn, dftd3, and dftd4 are included
