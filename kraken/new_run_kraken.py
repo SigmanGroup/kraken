@@ -23,8 +23,6 @@ from pathlib import Path
 import yaml
 import numpy as np
 
-sys.path.append(str(Path(__file__).parent.absolute()))
-
 #conf_prune_idx = Path(__file__).parent / 'ConfPruneIdx.pyx'
 #shutil.copy2(conf_prune_idx, Path.cwd() / conf_prune_idx.name)
 

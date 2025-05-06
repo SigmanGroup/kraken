@@ -125,11 +125,11 @@ def get_args() -> argparse.Namespace:
 # Custom pretty printer
 PRINTER = PrettyPrinter(indent=2)
 
-MULTIWFN_EXECUTABLE = Path('/uufs/chpc.utah.edu/common/home/u6053008/kraken/kraken/executables/Multiwfn_3.7_bin_Linux_noGUI/Multiwfn')
-MULTIWFN_SETTINGS_FILE = Path('/uufs/chpc.utah.edu/common/home/u6053008/kraken/kraken/executables/Multiwfn_3.7_bin_Linux_noGUI/settings.ini')
+MULTIWFN_EXECUTABLE = Path(__file__).parent.parent / 'executables/Multiwfn_3.7_bin_Linux_noGUI/Multiwfn'
+MULTIWFN_SETTINGS_FILE = Path(__file__).parent.parent / 'executables/Multiwfn_3.7_bin_Linux_noGUI/settings.ini'
 
-DFTD3_EXECUTABLE = Path('/uufs/chpc.utah.edu/common/home/u6053008/kraken/kraken/executables/dftd3')
-DFTD4_EXECUTABLE = Path('/uufs/chpc.utah.edu/common/home/u6053008/kraken/kraken/executables/dftd4')
+DFTD3_EXECUTABLE = Path(__file__).parent.parent / 'executables/dftd3'
+DFTD4_EXECUTABLE = Path(__file__).parent.parent / 'executables/dftd4'
 
 numbers_pattern = re.compile(r"[-+]?\d*\.\d+|\d+")
 
