@@ -61,7 +61,13 @@ that are substituted with actual values required by SLURM including `$KID`, `$NP
       extract_dft_files.py --input ./data/ --destination ./dft_calculation_folder_for_convenience/
       ```
 
-   b. After completing all DFT calculations, you can return the results of the calculations to the appropriate `<KRAKEN_ID>/dft/` directories with
+   b. Use the group submission scripts to run the DFT calculations.
+
+      ```bash
+      for i in *.com; do subg16 $i -c sigman -m 32 -p 16 -t 12; done
+      ```
+
+   c. After completing all DFT calculations, you can return the results of the calculations to the appropriate `<KRAKEN_ID>/dft/` directories with
       a complementary script like this.
 
       ```bash
