@@ -41,17 +41,29 @@ These instructions are for Sigman group members to submit batches of calculation
 see (and modify) the SLURM templates in the `kraken/slurm_templates` directory to accommodate your job scheduler. Please note that special symbols exist in the SLURM templates
 that are substituted with actual values required by SLURM including `$KID`, `$NPROCS`, `$MEM`, and several others.
 
-1. Run the example submission script with your requested inputs and configurations for the SLURM job. This will split your CSV file into individual conformer searches
+1. Format a .csv file that contains your monophosphine SMILES string, kraken id, and conversion flag.
+
+
+        +-----------+------------------+-----------------+
+        | KRAKEN_ID | SMILES           | CONVERSION_FLAG |
+        +-----------+------------------+-----------------+
+        | 5039      | CP(C)C           | 4               |
+        | 10596     | CP(C1=CC=CC=C1)C | 4               |
+        | ...       | ...              | ...             |
+        +-----------+------------------+-----------------+
+
+
+2. Run the example submission script with your requested inputs and configurations for the SLURM job. This will split your CSV file into individual conformer searches
    and submit them to nodes as their own job. Please note, that the conformer searches are relatively quick and not too computationally intensive, so use resources sparingly.
 
     ```bash
     example_conf_search_submission_script.py --csv small_molecules.csv --nprocs 8 --mem 16 --time 6 --calculation-dir ./data/ --debug
     ```
 
-2. Once all jobs are complete, inspect the individual SLURM logfiles to ensure that each one terminated properly. You can search the SLURM logfiles for logging errors (search for "ERROR")
+3. Once all jobs are complete, inspect the individual SLURM logfiles to ensure that each one terminated properly. You can search the SLURM logfiles for logging errors (search for "ERROR")
    and warnings (search for "WARNING"). If the jobs did not complete, be sure to check the .error file produced by SLURM and raise an issue on this repository.
 
-3. After all jobs complete successfully, use the included CLI scripts that are installed along with Kraken to move your .com files into a common directory so you can submit them
+4. After all jobs complete successfully, use the included CLI scripts that are installed along with Kraken to move your .com files into a common directory so you can submit them
    all at once instead of navigating to the individual `<KRAKEN_ID>/dft/` directories.
 
    a. For your convenience, CLI scripts have been included to move the DFT files from the `<KRAKEN_ID>/dft/` directory to somewhere else if you
@@ -73,17 +85,17 @@ that are substituted with actual values required by SLURM including `$KID`, `$NP
       ```bash
       return_dft_files.py --input ./dft_calculation_folder_for_convenience/ --destination ./data/
       ```
-4. The DFT jobs should be evaluated for completeness and errors before returning them to the `<KRAKEN_ID>/dft/` directories. Kraken can accomodate some errors, but error handling
+5. The DFT jobs should be evaluated for completeness and errors before returning them to the `<KRAKEN_ID>/dft/` directories. Kraken can accomodate some errors, but error handling
    is not fully tested. We recommend using [this tool to check your Gaussian16 log files](https://github.com/thejameshoward/GaussianLogfileAssessor.git). If your jobs are not converging
    or have imaginary frequencies, try implementing the CalcAll keyword in your optimization job in the `.com` file.
 
-5. The DFT portion of the Kraken workflow can then be submitted to the compute nodes similarly to the conformer search portion.
+6. The DFT portion of the Kraken workflow can then be submitted to the compute nodes similarly to the conformer search portion.
 
     ```bash
     example_dft_submission_script.py --csv small_molecules.csv --nprocs 8 --mem 16 --time 6 --calculation-dir ./data/ --debug
     ```
 
-6. Check the resulting SLURM .log and .error files for any indication that the individual SLURM jobs failed. If there is an unhandled error, be sure to raise an issue on this repository.
+7. Check the resulting SLURM .log and .error files for any indication that the individual SLURM jobs failed. If there is an unhandled error, be sure to raise an issue on this repository.
 
 ## Example Usage (directly running on a compute node)
 
