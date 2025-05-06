@@ -54,7 +54,7 @@ that are substituted with actual values required by SLURM including `$KID`, `$NP
 
 
 2. Run the example submission script with your requested inputs and configurations for the SLURM job. This will split your CSV file into individual conformer searches
-   and submit them to nodes as their own job. Please note, that the conformer searches are relatively quick and not too computationally intensive, so use resources sparingly.
+   and submit them to nodes as their own job. The conformer searches are quick and not too computationally demanding, so use resources sparingly.
 
     ```bash
     example_conf_search_submission_script.py --csv small_molecules.csv --nprocs 8 --mem 16 --time 6 --calculation-dir ./data/ --debug
