@@ -39,7 +39,7 @@ __A detailed report comparing 28 monophosphines from the original Kraken workflo
 ## Example Usage (submission to CHPC for the Sigman group)
 These instructions are for Sigman group members to submit batches of calculations to the Sigman owner nodes on Notchpeak. For other users outside of the Sigman group, please
 see (and modify) the SLURM templates in the `kraken/slurm_templates` directory to accommodate your job scheduler. Please note that special symbols exist in the SLURM templates
-that are substituted actual values required by SLURM including `$KID`, `$NPROCS`, `$MEM`, and several others.
+that are substituted with actual values required by SLURM including `$KID`, `$NPROCS`, `$MEM`, and several others.
 
 1. Run the example submission script with your requested inputs and configurations for the SLURM job. This will split your CSV file into individual conformer searches
    and submit them to nodes as their own job. Please note, that the conformer searches are relatively quick and not too computationally intensive, so use resources sparingly.
