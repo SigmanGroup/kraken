@@ -89,7 +89,7 @@ that are substituted with actual values required by SLURM including `$KID`, `$NP
    is not fully tested. We recommend using [this tool to check your Gaussian16 log files](https://github.com/thejameshoward/GaussianLogfileAssessor.git). If your jobs are not converging
    or have imaginary frequencies, try implementing the CalcAll keyword in your optimization job in the `.com` file.
 
-6. The DFT portion of the Kraken workflow can then be submitted to the compute nodes similarly to the conformer search portion.
+6. The DFT portion of the Kraken workflow can then be submitted to the compute nodes.
 
     ```bash
     example_dft_submission_script.py --csv small_molecules.csv --nprocs 8 --mem 16 --time 6 --calculation-dir ./data/ --debug
