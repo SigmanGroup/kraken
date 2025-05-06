@@ -15,15 +15,15 @@ __A detailed report comparing 28 monophosphines from the original Kraken workflo
 
 1.  Create a conda environment with the included environment yaml file.
 
-    ```bash
-    conda env create --name kraken --file=kraken.yml
-    ```
+```bash
+conda env create --name kraken --file=kraken.yml
+```
 
 2.  Activate the new environment
 
-    ```bash
-    conda activate kraken
-    ```
+```bash
+conda activate kraken
+```
 
 3. (Optional) [Download an appropriate version of xtb and crest](https://github.com/crest-lab/crest). The precompiled versions
    for xtb v6.6.0 and crest v2.12 worked in our testing. Alternatively, CHPC users can use `module load crest/2.12` to
@@ -33,9 +33,9 @@ __A detailed report comparing 28 monophosphines from the original Kraken workflo
 
 5. Install the `kraken` package by navigating to the parent directory containing `setup.py` and running this command
 
-    ```bash
-    pip install .
-    ```
+```bash
+pip install .
+```
 ## Example Usage (submission to CHPC for the Sigman group)
 These instructions are for Sigman group members to submit batches of calculations to the Sigman owner nodes on Notchpeak. For other users outside of the Sigman group, please
 see (and modify) the SLURM templates in the `kraken/slurm_templates` directory to accommodate your job scheduler. Please note that special symbols exist in the SLURM templates
@@ -51,9 +51,9 @@ that are substituted with actual values required by SLURM including `$KID`, `$NP
 
 2. Run the example submission script with your requested inputs and configurations:
 
-    ```bash
-    example_conf_search_submission_script.py --csv small_molecules.csv --nprocs 8 --mem 16 --time 6 --calculation-dir ./data/ --debug
-    ```
+```bash
+example_conf_search_submission_script.py --csv small_molecules.csv --nprocs 8 --mem 16 --time 6 --calculation-dir ./data/ --debug
+```
 
 3. After completion, inspect SLURM log files (`*.log`, `*.error`) for errors/warnings (`ERROR`, `WARNING`).
 
@@ -61,29 +61,29 @@ that are substituted with actual values required by SLURM including `$KID`, `$NP
 
     a. Move DFT files to a common directory:
 
-        ```bash
-        extract_dft_files.py --input ./data/ --destination ./dft_calculation_folder_for_convenience/
-        ```
+    ```bash
+    extract_dft_files.py --input ./data/ --destination ./dft_calculation_folder_for_convenience/
+    ```
 
     b. Submit DFT calculations:
 
-        ```bash
-        for i in *.com; do subg16 $i -c sigman -m 32 -p 16 -t 12; done
-        ```
+    ```bash
+    for i in *.com; do subg16 $i -c sigman -m 32 -p 16 -t 12; done
+    ```
 
     c. Return results to their directories:
 
-        ```bash
-        return_dft_files.py --input ./dft_calculation_folder_for_convenience/ --destination ./data/
-        ```
+    ```bash
+    return_dft_files.py --input ./dft_calculation_folder_for_convenience/ --destination ./data/
+    ```
 
 5. Evaluate DFT jobs for errors. For help, use [GaussianLogfileAssessor](https://github.com/thejameshoward/GaussianLogfileAssessor.git).
 
 6. Submit the DFT portion of the Kraken workflow:
 
-    ```bash
-    example_dft_submission_script.py --csv small_molecules.csv --nprocs 8 --mem 16 --time 6 --calculation-dir ./data/ --debug
-    ```
+```bash
+example_dft_submission_script.py --csv small_molecules.csv --nprocs 8 --mem 16 --time 6 --calculation-dir ./data/ --debug
+```
 
 7. Check SLURM `.log` and `.error` files and raise an issue on this repo if necessary.
 
@@ -99,66 +99,66 @@ that are substituted with actual values required by SLURM including `$KID`, `$NP
 
 2. Run the first Kraken script on a `.csv` file containing the columns `SMILES`, `KRAKEN_ID`, and `CONVERSION_FLAG`:
 
-    ```bash
-    run_kraken_conf_search.py -i ./data/input_file.csv --nprocs 4 --calculation-dir ./data/ --debug > kraken_conf_search.log
-    ```
+```bash
+run_kraken_conf_search.py -i ./data/input_file.csv --nprocs 4 --calculation-dir ./data/ --debug > kraken_conf_search.log
+```
 
 3. After the script terminates, navigate to `./data/` to find the conformer search directories. Each `<KRAKEN_ID>/dft/` folder contains the `.com` files
    for Gaussian16. You can run them directly in-place or follow the steps below if evaluating many ligands:
 
     a. Move DFT input files to a centralized directory:
 
-        ```bash
-        extract_dft_files.py --input ./data/ --destination ./dft_calculation_folder_for_convenience/
-        ```
+```bash
+extract_dft_files.py --input ./data/ --destination ./dft_calculation_folder_for_convenience/
+```
 
     b. After running the DFT calculations, return the results to their original locations:
 
-        ```bash
-        return_dft_files.py --input ./dft_calculation_folder_for_convenience/ --destination ./data/
-        ```
+```bash
+return_dft_files.py --input ./dft_calculation_folder_for_convenience/ --destination ./data/
+```
 
 4. After confirming the `.log`, `.chk`, and `.wfn` files are present in `<KRAKEN_ID>/dft/`, run the final Kraken DFT processing step.
    This step operates on individual Kraken IDs (CSV input is not supported):
 
-    ```bash
-    run_kraken_dft.py --kid 90000001 --dir ./data/ --nprocs 4 --force > kraken_dft_processing_90000001.log
-    ```
+```bash
+run_kraken_dft.py --kid 90000001 --dir ./data/ --nprocs 4 --force > kraken_dft_processing_90000001.log
+```
 
 5. Final `.yml` output files from both the CREST and DFT steps will be found in `./data/<KRAKEN_ID>/`:
 
-    ```
-    ./90000001/
-    ├── 90000001_confdata.yml
-    ├── 90000001_data.yml
-    ├── 90000001_Ni_combined.yml
-    ├── 90000001_Ni_confs.yml
-    ├── 90000001_Ni.yml
-    ├── 90000001_noNi_combined.yml
-    ├── 90000001_noNi_confs.yml
-    ├── 90000001_noNi.yml
-    ├── 90000001_relative_energies.csv
-    ├── crest_calculations
-    │   ├── 90000001_Ni
-    │   └── 90000001_noNi
-    ├── dft
-    │   ├── 90000001_errors.txt
-    │   ├── 90000001_noNi_00000
-    │   ├── 90000001_noNi_00001
-    │   ├── 90000001_noNi_00002
-    │   ├── 90000001_noNi_00003
-    │   ├── 90000001_noNi_00004
-    │   ├── 90000001_noNi_00005
-    │   ├── 90000001_noNi_00006
-    │   ├── 90000001_noNi_00007
-    │   ├── 90000001_noNi_00009
-    │   ├── confselection_minmax_Ni.txt
-    │   ├── confselection_minmax_noNi.txt
-    │   ├── fort.7
-    │   ├── rmsdmatrix.csv
-    │   └── selected_conformers
-    └── xtb_scr_dir
-    ```
+```
+./90000001/
+├── 90000001_confdata.yml
+├── 90000001_data.yml
+├── 90000001_Ni_combined.yml
+├── 90000001_Ni_confs.yml
+├── 90000001_Ni.yml
+├── 90000001_noNi_combined.yml
+├── 90000001_noNi_confs.yml
+├── 90000001_noNi.yml
+├── 90000001_relative_energies.csv
+├── crest_calculations
+│   ├── 90000001_Ni
+│   └── 90000001_noNi
+├── dft
+│   ├── 90000001_errors.txt
+│   ├── 90000001_noNi_00000
+│   ├── 90000001_noNi_00001
+│   ├── 90000001_noNi_00002
+│   ├── 90000001_noNi_00003
+│   ├── 90000001_noNi_00004
+│   ├── 90000001_noNi_00005
+│   ├── 90000001_noNi_00006
+│   ├── 90000001_noNi_00007
+│   ├── 90000001_noNi_00009
+│   ├── confselection_minmax_Ni.txt
+│   ├── confselection_minmax_noNi.txt
+│   ├── fort.7
+│   ├── rmsdmatrix.csv
+│   └── selected_conformers
+└── xtb_scr_dir
+```
 
 
 ## Citations
@@ -209,10 +209,10 @@ Eike Caldeweyher, Jan-Michael Mewes, Sebastian Ehlert, Stefan Grimme. <br>
 
 1.  Activate kraken
 
-    ```bash
-    conda activate kraken
-    ```
-   <br>
+```bash
+conda activate kraken
+```
+<br>
 2.  Add the desired version of xtb to your path (this is written for development but will be clean in the final docs)
 
 ```export PATH=/home/sigman/kraken-xtb/6.2.2/bin/:/home/sigman/opt/openmpi/bin:/home/sigman/orca:/home/sigman/anaconda3/envs/krakendevclean/bin:/home/sigman/anaconda3/condabin:/home/sigman/.vscode/cli/servers/Stable-abd2f3db4bdb28f9e95536dfa84d8479f1eb312d/server/bin/remote-cli:/home/sigman/opt/openmpi/bin:/home/sigman/orca:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin```
