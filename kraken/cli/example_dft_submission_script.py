@@ -74,6 +74,12 @@ def get_args() -> argparse.Namespace:
                         help='Amount of memory in GB to request\n\n',
                         metavar='INT')
 
+    parser.add_argument('-t', '--time',
+                        dest='time',
+                        default=8,
+                        help='Time requested in hours\n\n',
+                        metavar='INT')
+
     parser.add_argument('--calculation-dir',
                         dest='calc_dir',
                         default='./data/',
@@ -103,6 +109,7 @@ def get_args() -> argparse.Namespace:
 def write_dft_job_file(kraken_id: str,
                        directory: Path,
                        destination: Path,
+                       time: int,
                        template: Path,
                        nprocs: int,
                        mem: int,
@@ -114,6 +121,7 @@ def write_dft_job_file(kraken_id: str,
         text = infile.read()
 
     text = re.sub(r'\$KID', str(kraken_id), text)
+    text = re.sub(r'\$TIME', str(time), text)
     text = re.sub(r'\$NPROCS', str(nprocs), text)
     text = re.sub(r'\$MEM', str(mem), text)
     text = re.sub(r'\$CALCDIR', str(directory.absolute()), text)
@@ -154,6 +162,7 @@ def main() -> None:
         jobfile = write_dft_job_file(kraken_id=id,
                                      directory=args.calc_dir,
                                      destination=dest,
+                                     time=args.time,
                                      template=SLURM_TEMPLATE,
                                      nprocs=args.nprocs,
                                      mem=args.mem,

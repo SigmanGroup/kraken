@@ -5,9 +5,13 @@ programs used to build Kraken (xtb v6.2.2 and crest v2.8). The provided environm
 the desired program version through a subprocess. In our testing, the new workflow performs similarly to the original workflow with several
 exceptions depending on the program versions used.
 
-__This software is under active development. The results of this software have not been compared to the original kraken database thoroughly. Use with caution.__
+There are some significant differences between xTB versions that lead to different properties at the xTB-GFN2 level. However, we have compared
+the DFT properties of over 60 monophosphines to the original Kraken results. For a single monophosphine, the differences between the old and
+new properties may exceed 75% of the original value (mostly quadrant/octant volumes). However, these differences likely result from either
+incomplete conformer searches in the original dataset or the stochastic nature of conformer searches.
 
-## Installation
+__A detailed report comparing 28 monophosphines from the original Kraken workflow is provided in the validation folder__
+## Installation (Linux systems only)
 
 1.  Create a conda environment with the included environment yaml file.
 
@@ -22,8 +26,8 @@ __This software is under active development. The results of this software have n
     ```
 
 3. [Download an appropriate version of xtb and crest](https://github.com/crest-lab/crest). The precompiled versions
-   for xtb v6.6.0 and crest v2.12 worked in our testing. Alternatively, CHPC users can use `module load crest` to
-   load xTB version 6.4.0 and CREST version 2.12.
+   for xtb v6.6.0 and crest v2.12 worked in our testing. Alternatively, CHPC users can use `module load crest/2.12` to
+   load xTB v6.4.0 and CREST v2.12.
 
 4. Place the precompiled binaries for xtb and crest somewhere on your PATH. Kraken will call these through subprocess.
 
@@ -32,7 +36,7 @@ __This software is under active development. The results of this software have n
     ```bash
     pip install .
     ```
-## Example Usage
+## Example Usage (directly running on a compute node)
 
 1. Format a .csv file that contains your monophosphine SMILES string, kraken id, and conversion flag.
 
@@ -46,23 +50,151 @@ __This software is under active development. The results of this software have n
         +-----------+------------------+-----------------+
 
 
-2.  Run Kraken on a .csv file containing the columns 'SMILES', 'KRAKEN_ID', and 'CONVERSION_FLAG'. Here are two examples. <br>
+2.  Run the first Kraken script on a .csv file containing the columns 'SMILES', 'KRAKEN_ID', and 'CONVERSION_FLAG'. Here are two examples. <br>
 
     ```bash
-    nohup python3 -u ./run_kraken.py -i input.csv --nprocs 24 > example_output_file.log &
+    run_kraken_conf_search.py -i ./data/input_file.csv --nprocs 4 --calculation-dir ./data/ --debug > kraken_conf_search.log
     ```
+
+3. Once that script terminates, you can navigate to the calculation-dir (in this case `./data`) and find the directories for your Kraken conformer
+   search calculations. The `<KRAKEN_ID>/dft/` directory contains the `.com` files that should be run with Gaussian16. You can run these directly
+   in the existing `<KRAKEN_ID>/dft/` directory, or follow the steps below if you have many different monophosphines to evaluate.
+
+   a. For your convenience, CLI scripts have been included to move the DFT files from the `<KRAKEN_ID>/dft/` directory to somewhere else if you
+      wish to run all of these calculations in another directory (or on another system entirely). This can be executed with the following command.
+
+      ```bash
+      extract_dft_files.py --input ./data/ --destination ./dft_calculation_folder_for_convenience/
+      ```
+
+   b. After completing all DFT calculations, you can return the results of the calculations to the appropriate `<KRAKEN_ID>/dft/` directories with
+      a complementary script like this.
+
+      ```bash
+      return_dft_files.py --input ./dft_calculation_folder_for_convenience/ --destination ./data/
+      ```
+
+4. After completing all DFT calculations and ensuring the requisite .log, .chk, and .wfn files are present in the correct `<KRAKEN_ID>/dft/` directories,
+   the final step of the workflow can be executed with the `run_kraken_dft.py` script. This script must be run on each Kraken ID directory directly (i.e.,
+   it does not currently support the .csv input). In the example below, one of the entries (KID 90000001) is processed with the script.
+
+   Note that the `--force` flag ensures that if there is a problem with this script and it must be run again, all steps will be performed and no files
+   will be read from potentially incomplete runs.
 
     ```bash
-    nohup python3 -u ./run_kraken.py -i tpp_input.csv --nprocs 24 > triphenyl_phosphine.log &
+    run_kraken_dft.py --kid 90000001 --dir ./data/ --nprocs 4 --force > kraken_dft_processing_90000001.log
     ```
 
-## Comparing old and new workflows
+5. The resulting `.yml` files from both the CREST conformer search portion and the DFT processing portion of the Kraken workflow will exist in the `<KRAKEN_ID>`
+   directory. In the present case, this directory's path is `./data/<KRAKEN_ID>` because we specified flags like `--calculation-dir` and `--dir` to be `./data` in
+   previous steps. The final results will look something like this.
 
-## Citing our work
-Please cite the original kraken publication if you used this software.
+```
+./90000001/
+├── 90000001_confdata.yml
+├── 90000001_data.yml
+├── 90000001_Ni_combined.yml
+├── 90000001_Ni_confs.yml
+├── 90000001_Ni.yml
+├── 90000001_noNi_combined.yml
+├── 90000001_noNi_confs.yml
+├── 90000001_noNi.yml
+├── 90000001_relative_energies.csv
+├── crest_calculations
+│   ├── 90000001_Ni
+│   └── 90000001_noNi
+├── dft
+│   ├── 90000001_errors.txt
+│   ├── 90000001_noNi_00000
+│   ├── 90000001_noNi_00001
+│   ├── 90000001_noNi_00002
+│   ├── 90000001_noNi_00003
+│   ├── 90000001_noNi_00004
+│   ├── 90000001_noNi_00005
+│   ├── 90000001_noNi_00006
+│   ├── 90000001_noNi_00007
+│   ├── 90000001_noNi_00009
+│   ├── confselection_minmax_Ni.txt
+│   ├── confselection_minmax_noNi.txt
+│   ├── fort.7
+│   ├── rmsdmatrix.csv
+│   └── selected_conformers
+└── xtb_scr_dir
+```
+## Example Usage (submission to CHPC for the Sigman group)
+These instructions are for Sigman group members to submit batches of calculations to the Sigman owner nodes on Notchpeak. For other users outside of the Sigman group, please
+see (and modify) the SLURM templates in the `kraken/slurm_templates` directory to accommodate your job scheduler. Please note that special symbols exist in the SLURM templates
+that are substituted actual values required by SLURM including `$KID`, `$NPROCS`, `$MEM`, and several others.
 
-1.  __A Comprehensive Discovery Platform for Organophosphorus Ligands for Catalysis__<br>Tobias Gensch, Gabriel dos Passos Gomes, Pascal Friederich, Ellyn Peters, Théophile Gaudin, Robert Pollice, Kjell Jorner, AkshatKumar Nigam, Michael Lindner-D’Addario, Matthew S. Sigman, and Alán Aspuru-Guzik.
-    *J*. *Am*. *Chem*. *Soc*. __2022__ *144* (3), 1205-1217. DOI: 10.1021/jacs.1c09718
+1. Run the example submission script with your requested inputs and configurations for the SLURM job. This will split your CSV file into individual conformer searches
+   and submit them to nodes as their own job. Please note, that the conformer searches are relatively quick and not too computationally intensive, so use resources sparingly.
+
+    ```bash
+    example_conf_search_submission_script.py --csv small_molecules.csv --nprocs 8 --mem 16 --time 6 --calculation-dir ./data/ --debug
+    ```
+
+2. Once all jobs are complete, inspect the individual SLURM logfiles to ensure that each one terminated properly. You can search the SLURM logfiles for logging errors (search for "ERROR")
+   and warnings (search for "WARNING"). If the jobs did not complete, be sure to check the .error file produced by SLURM and raise an issue on this repository.
+
+3. After all jobs completed successfully, use the included CLI scripts that are installed along with Kraken to move your .com files into a common directory so you can submit them
+   all at once instead of navigating to the individual `<KRAKEN_ID>/dft/` directories.
+
+   a. For your convenience, CLI scripts have been included to move the DFT files from the `<KRAKEN_ID>/dft/` directory to somewhere else if you
+      wish to run all of these calculations in another directory (or on another system entirely). This can be executed with the following command.
+
+      ```bash
+      extract_dft_files.py --input ./data/ --destination ./dft_calculation_folder_for_convenience/
+      ```
+
+   b. After completing all DFT calculations, you can return the results of the calculations to the appropriate `<KRAKEN_ID>/dft/` directories with
+      a complementary script like this.
+
+      ```bash
+      return_dft_files.py --input ./dft_calculation_folder_for_convenience/ --destination ./data/
+      ```
+4. The DFT jobs should be evaluated for completeness and errors before returning them to the `<KRAKEN_ID>/dft/` directories. Kraken can accomodate some errors, but error handling
+   is not fully tested. We recommend using [this tool to check your Gaussian16 log files](https://github.com/thejameshoward/GaussianLogfileAssessor.git). If your jobs are not converging
+   or have imaginary frequencies, try implementing the CalcAll keyword in your optimization job in the `.com` file.
+
+5. The DFT portion of the Kraken workflow can then be submitted to the compute nodes similarly to the conformer search portion.
+
+    ```bash
+    example_dft_submission_script.py --csv small_molecules.csv --nprocs 8 --mem 16 --time 6 --calculation-dir ./data/ --debug
+    ```
+
+6. Check the resulting SLURM .log and .error files for any indication that the individual SLURM jobs failed. If there is an unhandled error, be sure to raise an issue on this repository.
+
+## Citations
+Please cite the original kraken publication if you used this software. The executables for Multiwfn, dftd3, and dftd4 are included
+in this repository and are used in the Kraken workflow. Please cite the Multiwfn, dftd3, and dftd4 publications.
+
+__A Comprehensive Discovery Platform for Organophosphorus Ligands for Catalysis__<br>
+Tobias Gensch, Gabriel dos Passos Gomes, Pascal Friederich, Ellyn Peters, Théophile Gaudin, Robert Pollice, Kjell Jorner, AkshatKumar Nigam, Michael Lindner-D’Addario, Matthew S. Sigman, Alán Aspuru-Guzik. <br>
+*J*. *Am*. *Chem*. *Soc*. __2022__ *144* (3), 1205-1217. DOI: 10.1021/jacs.1c09718
+
+__Multiwfn: A Multifunctional Wavefunction Analyzer__<br>
+Tian Lu, Feiwu Chen. <br>
+*J*. *Comput*. *Chem*., __2012__ *33*, 580-592. DOI: 10.1002/jcc.22885
+
+__A consistent and accurate ab initio parametrization of density functional dispersion correction (DFT-D) for the 94 elements H-Pu__<br>
+Stefan Grimme, Jens Antony, Stephan Ehrlich, Helge Krie. <br>
+*J*. *Chem*. *Phys*. __2010__, *132*, 154104. DOI: 10.1063/1.3382344
+
+__Effect of the damping function in dispersion corrected density functional theory__<br>
+Stefan Grimme, Stephan Ehrlich, Lars Goerigk. <br>
+*J*. *Comput*. *Chem*., __2011__, *32*: 1456-1465. DOI: 10.1002/jcc.21759
+
+__Extension of the D3 dispersion coefficient model__<br>
+Eike Caldeweyher, Christoph Bannwarth, Stefan Grimme. <br>
+*J*. *Chem*. *Phys*., __2017__, *147*, 034112. DOI: 10.1063/1.4993215
+
+__A generally applicable atomic-charge dependent London dispersion correction__<br>
+Eike Caldeweyher, Sebastian Ehlert, Andreas Hansen, Hagen Neugebauer, Sebastian Spicher, Christoph Bannwarth, Stefan Grimme. <br>
+*J*. *Chem*. *Phys*., __2019__, *150*, 154122. DOI: 10.1063/1.5090222
+
+__Extension and evaluation of the D4 London-dispersion model for periodic systems__<br>
+Eike Caldeweyher, Jan-Michael Mewes, Sebastian Ehlert, Stefan Grimme. <br>
+*Phys*. *Chem*. *Chem*. *Phys*., __2020__, *22*, 8499-8512. DOI: 10.1039/D0CP00502A
 
 ## Known Issues
 1.  The conformers generated by crest will differ between runs, so it can be difficult to compare xTB properties.
@@ -71,14 +203,7 @@ Please cite the original kraken publication if you used this software.
 4.  Despite refactoring, the codebase still contains unused code.
 5.  The conda versions of xtb and CREST are incompatible with Kraken. They frequently crashed during the --vipea calculations. The precompiled binaries of each release should be used or compiled directly.
 
-<br>
-<br>
-<br>
-<br>
-<br>
-
 # Developer notes
-
 ## Differences when using newer SQM programs
 1.  Several descriptors vary substantially with xtb 6.7.0 or greater (EA/IP descriptors, nucleophilicity) because IPEA-xTB is not used for vertical IP/EA calculations. This will likely not affect the DFT level descriptors.
 2.  Crest v2.12 produces many more conformers than crest v2.8. Because conformers for DFT calculations are selected based on properties, the number of conformers for DFT calculations should remain unchanged.
