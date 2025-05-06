@@ -10,81 +10,52 @@ Major revisions March 2024 provided by:
     James Howard, PhD
 
 FOR TESTING
-python3 ./run_kraken.py -i "CP(C)C" --kraken-id 88888888 --nprocs 4 --conversion-flag 4 --noreftopo --nocross --verbose --debug
+run_kraken_conf_search.py -i "CP(C)C" --kraken-id 88888888  --calculation-dir ./data/ --nprocs 4 --conversion-flag 4 --noreftopo --nocross
 '''
 
-# stdlib
 import os
 import sys
-import time
-import shutil
 import argparse
 import logging
 
 from pathlib import Path
 
-# Dependencies
-import yaml
-import numpy as np
-import pandas as pd
-from rdkit import Chem
 import morfeus
+import pandas as pd
 
-sys.path.append(str(Path(__file__).parent.absolute()))
+from rdkit import Chem
 
-#conf_prune_idx = Path(__file__).parent / 'ConfPruneIdx.pyx'
-#shutil.copy2(conf_prune_idx, Path.cwd() / conf_prune_idx.name)
-
-# Custom
 from kraken.semiempirical import _get_crest_version
 from kraken.xtb import _get_xtb_version
 from kraken.utils import _str_is_smiles
 
 from kraken.new_run_kraken import run_kraken_calculation
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='[%(levelname)-5s - %(asctime)s] [%(module)s] %(message)s',
-    datefmt='%m/%d/%Y:%H:%M:%S',  # Correct way to format the date
-    handlers=[logging.StreamHandler(sys.stdout)]
-)
-
 logger = logging.getLogger(__name__)
 
-XTB_VERSION = _get_xtb_version()
-CREST_VERSION = _get_crest_version()
-
-logger.info('Using xTB version %s', str(XTB_VERSION))
-logger.info('Using CREST version %s', str(CREST_VERSION))
-
-if XTB_VERSION != '6.2.2':
-    logger.warning('xTB version does not match the original kraken version 6.2.2')
-
-if CREST_VERSION != '2.8':
-    logger.warning('CREST version does not match the original kraken version 2.8')
-
-if morfeus.__version__ != '0.5.0':
-    logger.warning('MORFEUS version does not match the original kraken version 0.5.0')
-
-DESCRIPTION = """
+DESCRIPTION = r'''
+╔══════════════════════════════════════╗
+║   | |/ / _ \  /_\ | |/ / __| \| |    ║
+║   | ' <|   / / _ \| ' <| _|| .` |    ║
+║   |_|\_\_|_\/_/ \_\_|\_\___|_|\_|    ║
+╚══════════════════════════════════════╝
+Kolossal viRtual dAtabase for moleKular dEscriptors
+of orgaNophosphorus ligands.
 
 
-               ╔══════════════════════════════════════╗
-               ║   | |/ / _ \  /_\ | |/ / __| \| |    ║
-               ║   | ' <|   / / _ \| ' <| _|| .` |    ║
-               ║   |_|\_\_|_\/_/ \_\_|\_\___|_|\_|    ║
-               ╚══════════════════════════════════════╝
+This is the first script required to run the Kraken
+workflow. This script accepts either SMILES strings
+or .xyz files directly. Alternatively, users may
+specify a .csv file that contains the following columns.
 
+'CONVERSION_FLAG', 'KRAKEN_ID', 'SMILES'
 
-        Kolossal viRtual dAtabase for moleKular dEscriptors
-                     of orgaNophosphorus ligands.
+The script can be called directly in the terminal or
+called in a shell script that is submitted to SLURM
+or some other job scheduler.
+'''
 
-
-            """
-#TODO complete DESCRIPTION
-#TODO complete INPUT_HELP_MESSAGE
-
-INPUT_HELP_MESSAGE = "SMILES string, XYZ file (untested), or .csv file\n\n"
+DESCRIPTION = '\n'.join(line.center(80) for line in DESCRIPTION.strip('\n').split('\n'))
 
 def get_args() -> argparse.Namespace:
     '''Gets the arguments for running Kraken'''
@@ -95,31 +66,40 @@ def get_args() -> argparse.Namespace:
         allow_abbrev=False,
         add_help=False)
 
-    parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS,
-                    help='Show this help message and exit.\n\n')
+    parser.add_argument('-h', '--help',
+                        action='help',
+                        default=argparse.SUPPRESS,
+                        help='Show this help message and exit.\n\n')
 
     parser.add_argument('-i', '--input',
                         dest='input',
                         required=True,
-                        help=INPUT_HELP_MESSAGE,
-                        metavar='<input>')
+                        help='SMILES string, XYZ file, or CSV file\n\n',
+                        metavar='STR')
 
     parser.add_argument('--kraken-id',
                         dest='kraken_id',
                         required=True,
                         help='8-digit Kraken ID number specific to the input\n\n',
-                        metavar='<int>')
+                        metavar='INT')
 
     parser.add_argument('--nprocs',
                         dest='nprocs',
                         default=4,
                         help='Number of processors to use for CREST and xTB\n\n',
-                        metavar='<int>')
+                        metavar='INT')
 
+    # Not in order: 0=RDKit, 1=molconvert, 2=??? (likely coords from XYZ file), 3=obabel, 4=try_all_methods #TODO
     parser.add_argument('--conversion-flag',
-                        choices=['0', '1', '2', '3', '4'],  # Not in order: 0=RDKit, 1=molconvert, 2=??? (likely coords from XYZ file), 3=obabel, 4=try_all_methods #TODO
+                        choices=['0', '1', '2', '3', '4'],
                         dest='conversion_flag',
                         help='Method for 3D structure generation (see README.md, default=4)\n\n')
+
+    parser.add_argument('--calculation-dir',
+                        dest='calc_dir',
+                        default='./data/',
+                        help='Path to the directory that will contain the results of Kraken\n\n',
+                        metavar='DIR')
 
     parser.add_argument('--noreftopo',
                         action='store_true',
@@ -127,23 +107,17 @@ def get_args() -> argparse.Namespace:
 
     parser.add_argument('--nocross',
                         action='store_true',
-                        help='Disables genetic crossing in CREST calculations\n\n')
-
-    parser.add_argument('--calculation-dir',
-                        dest='calc_dir',
-                        default='./data/',
-                        help='Relative path to the directory that will contain the results of Kraken\n\n',
-                        metavar='<str>')
+                        help='Employs the --nocross flag for CREST calculations\n\n')
 
     parser.add_argument('--reduce_crest_output',
                         action='store_true',
                         help='Delete files from CREST to reduce disk usage (not recommended)\n\n')
 
-    parser.add_argument('--disable_nickel_calculation',
+    parser.add_argument('--disable-nickel-calculation',
                         action='store_true',
                         help='Disables the calculation of the Ni(CO)3 complex\n\n')
 
-    parser.add_argument('--disable_ligand_calculation',
+    parser.add_argument('--disable-ligand-calculation',
                         action='store_true',
                         help='Disables the calculation of the free ligand\n\n')
 
@@ -153,7 +127,7 @@ def get_args() -> argparse.Namespace:
 
     args.calc_dir = Path(args.calc_dir)
     if not args.calc_dir.exists():
-        raise FileNotFoundError(f'The calculation directory {args.args.calc_dir.absolute()} does not exist.')
+        raise FileNotFoundError(f'The calculation directory {args.calc_dir.absolute()} does not exist.')
 
     return args
 
@@ -266,20 +240,41 @@ def _parse_input(args: argparse.Namespace) -> tuple[list, list, list]:
 
     return ids, inputs, conversion_flags
 
-if __name__ == "__main__":
+def main():
+    '''Main entrypoint'''
     #TODO figure out what the user is inputting in this section
     #TODO for now we're just doing smiles
-
     args = get_args()
+
+    logging.basicConfig(
+        level=logging.DEBUG if args.debug else logging.INFO,
+        format='[%(levelname)-5s - %(asctime)s] [%(module)s] %(message)s',
+        datefmt='%m/%d/%Y:%H:%M:%S',
+        handlers=[logging.StreamHandler(sys.stdout)]
+    )
+
+    XTB_VERSION = _get_xtb_version()
+    CREST_VERSION = _get_crest_version()
+
+    logger.info('Using xTB version %s', str(XTB_VERSION))
+    logger.info('Using CREST version %s', str(CREST_VERSION))
+
+    if XTB_VERSION != '6.2.2':
+        logger.warning('xTB version does not match the original kraken version 6.2.2')
+
+    if CREST_VERSION != '2.8':
+        logger.warning('CREST version does not match the original kraken version 2.8')
+
+    if morfeus.__version__ != '0.5.0':
+        logger.warning('MORFEUS version does not match the original kraken version 0.5.0')
 
     # Get all requested kraken_ids, inputs (smiles), and conversion_flags
     ids, inputs, conversion_flags = _parse_input(args)
     ids = [_correct_kraken_id(x) for x in ids]
 
-    # Get the args supplied with the initial call
-    reduce_crest_output = args.reduce_crest_output
+    # Get the user supplied args
+    reduce_crest_output = bool(args.reduce_crest_output)
     nprocs = int(args.nprocs)
-    debug = args.debug
     calc_dir = Path(args.calc_dir)
     metal_char = 'Ni'
 
@@ -302,20 +297,20 @@ if __name__ == "__main__":
     for kraken_id, structure_input, conversion_flag in zip(ids, inputs, conversion_flags):
         logger.info('\t%s\tstructure_input=%s\tconversion_flag=%s', str(kraken_id), str(structure_input), str(conversion_flag))
 
-    # Set default settings
+    # Set default settings from the original workflow
     # These should not be removed
     # because they are saved in the results file
     settings = {
-        "max_E":6.0,
-        "max_p":0.1,
-        "OMP_NUM_THREADS":nprocs,
-        "MKL_NUM_THREADS":nprocs,
-        "dummy_distance": 2.1,
-        "remove_scratch": True,
-        "reduce_output": False,
-        "add_Pd_Cl2": False,
-        "add_Pd_Cl2_PH3": False,
-        "add_Ni_CO_3": False
+        'max_E': 6.0,
+        'max_p': 0.1,
+        'OMP_NUM_THREADS': nprocs,
+        'MKL_NUM_THREADS': nprocs,
+        'dummy_distance': 2.1,
+        'remove_scratch': True,
+        'reduce_output': reduce_crest_output,
+        'add_Pd_Cl2': False,
+        'add_Pd_Cl2_PH3': False,
+        'add_Ni_CO_3': False
     }
 
     for k, v in settings.items():
@@ -354,7 +349,9 @@ if __name__ == "__main__":
                                add_Pd_Cl2_PH3=settings['add_Pd_Cl2_PH3'],
                                add_Ni_CO_3=settings['add_Ni_CO_3'])
 
+    logger.info('KRAKEN TERMINATED NORMALLY')
 
-    print(f'\t\tKRAKEN TERMINATED NORMALLY\t\t\t')
+if __name__ == "__main__":
+    main()
 
 

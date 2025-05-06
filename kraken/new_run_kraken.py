@@ -15,7 +15,6 @@ import os
 import sys
 import time
 import shutil
-import argparse
 import logging
 
 from pathlib import Path
@@ -30,14 +29,14 @@ sys.path.append(str(Path(__file__).parent.absolute()))
 #shutil.copy2(conf_prune_idx, Path.cwd() / conf_prune_idx.name)
 
 # Custom
-from kraken import geometry, utils
+from kraken.geometry import get_Ni_CO_3, replace
 from kraken.semiempirical import run_crest, _get_crest_version
 from kraken.xtb import _get_xtb_version, xtb_opt
 from kraken.Kraken_Conformer_Selection_Only import conformer_selection_main
 from kraken.file_io import write_xyz
 from kraken.utils import _str_is_smiles, get_coords_from_smiles, get_num_bonds_P, add_Hs_to_P
 from kraken.utils import add_to_smiles, remove_complex, get_P_bond_indeces_of_ligand
-from kraken.utils import get_rotatable_bonds
+from kraken.utils import get_rotatable_bonds, reduce_data, combine_yaml
 from kraken.morfeus_properties import run_morfeus
 
 from morfeus import read_xyz
@@ -251,8 +250,8 @@ def run_kraken_calculation(kraken_id: str,
                 #coords_pd, elements_pd, pd_idx, p_idx = geometry.get_Pd_NH3_Cl_Cl()
                 #metal_char="Pd"
 
-                coords_pd, elements_pd, pd_idx, p_idx = geometry.get_Ni_CO_3()
-                success, coords, elements = geometry.replace(coords_pd, elements_pd, coords_ligand, elements_ligand, pd_idx, p_idx, match_pd_ind, match_p_idx, smiles, rotate_third_axis=True)
+                coords_pd, elements_pd, pd_idx, p_idx = get_Ni_CO_3()
+                success, coords, elements = replace(coords_pd, elements_pd, coords_ligand, elements_ligand, pd_idx, p_idx, match_pd_ind, match_p_idx, smiles, rotate_third_axis=True)
                 if elements==None:
                     exit(f'[FATAL] Elements is None for {smiles}. Exiting gracefully.')
                 if len(elements)==0:
@@ -303,13 +302,17 @@ def run_kraken_calculation(kraken_id: str,
         logger.info('Running CREST calculation of Kraken ID %s at %s', kraken_id, xyz_file_path)
 
         crest_done, xtb_done, coords_all, elements_all, boltzmann_data_conformers, conf_indeces, electronic_properties_conformers, time_needed = run_crest(file=xyz_file_path,
-                                                                                                                                                            nprocs=nprocs,
-                                                                                                                                                            reduce_output=reduce_crest_output,
-                                                                                                                                                            smiles=smiles,
-                                                                                                                                                            metal_char=metal_char,
-                                                                                                                                                            add_Pd_Cl2=add_Pd_Cl2,
-                                                                                                                                                            add_Pd_Cl2_PH3=add_Pd_Cl2_PH3,
-                                                                                                                                                            add_Ni_CO_3=add_Ni_CO_3)
+                                                                                                                                                           nprocs=nprocs,
+                                                                                                                                                           reduce_output=reduce_crest_output,
+                                                                                                                                                           smiles=smiles,
+                                                                                                                                                           metal_char=metal_char,
+                                                                                                                                                           add_Pd_Cl2=add_Pd_Cl2,
+                                                                                                                                                           add_Pd_Cl2_PH3=add_Pd_Cl2_PH3,
+                                                                                                                                                           add_Ni_CO_3=add_Ni_CO_3)
+
+        # Electronic properties wils, alphas, fukui are making it here in testing
+        # The missing keys must be a result of something else
+
         if not crest_done:
             raise ValueError(f'CREST did not terminate normally for {xyz_file_path.name} on job {job}.')
 
@@ -396,7 +399,11 @@ def run_kraken_calculation(kraken_id: str,
                 }
 
             # Sort the data in different output files and kill unnecessary data
-            data_here, data_here_confs, data_here_esp_points = utils.reduce_data(results)
+            data_here, data_here_confs, data_here_esp_points = reduce_data(results)
+
+            # Add CREST and xTB version
+            data_here['crest_version'] = _get_crest_version()
+            data_here['xtb_version'] = _get_xtb_version()
 
             # add the timings
             # TODO When computing the timings, they should be
@@ -416,16 +423,15 @@ def run_kraken_calculation(kraken_id: str,
                 outfile.write(yaml.dump(data_here, default_flow_style=False))
             logger.info('Saved summary file to %s', output_summary_file.absolute())
 
-
             # Conformer data goes to an extra output file
             with open(output_conformer_file, 'w', encoding='utf-8') as outfile:
                 outfile.write(yaml.dump(data_here_confs, default_flow_style=False))
             logger.info('Saved conformer file to %s', output_conformer_file.absolute())
 
             # Combine things
-            combined = utils.combine_yaml(kraken_id,
-                                          data_here,
-                                          data_here_confs)
+            combined = combine_yaml(kraken_id,
+                                    data_here,
+                                    data_here_confs)
             with open(output_combined_file, 'w', encoding='utf-8') as outfile:
                 outfile.write(yaml.dump(combined, default_flow_style=False))
             logger.info('Saved combined file to %s', output_combined_file.absolute())

@@ -192,6 +192,7 @@ def get_results_conformer(regular_xtb_calculation_log: Path,
     xtb_version = _get_xtb_version_from_file(regular_xtb_calculation_log)
 
     if '6.2.2' in xtb_version:
+        logger.info('Reading xTB log files for version %s (should be original version)', str(xtb_version))
         # Get results from regular XTB calculation
         muls, alphas, wils, dip, alpha, fukui, HOMO_LUMO_gap, esp_profile, esp_points, occ_energies, virt_energies = read_xtb_log1_orig_xtb(regular_xtb_calculation_log,
                                                                                                                                             natoms=natoms)
@@ -200,8 +201,10 @@ def get_results_conformer(regular_xtb_calculation_log: Path,
                                                                                                             natoms=natoms)
 
     else:
+        logger.info('Reading xTB log files for version %s', str(xtb_version))
         # Get results from regular XTB calculation
         muls, alphas, wils, dip, alpha, fukui, HOMO_LUMO_gap, esp_profile, esp_points, occ_energies, virt_energies = read_xtb_log1(regular_xtb_calculation_log, natoms=natoms, debug=debug)
+
         # Get results from vipea XTB calculation
         IP_delta_SCC, EA_delta_SCC, global_electrophilicity_index, nucleophilicity = read_xtb_log2(vipea_xtb_calculation_log, natoms=natoms, debug=debug)
 
@@ -556,6 +559,9 @@ def _get_orbital_energies_and_occupations_table(file_text: str) -> pd.DataFrame:
 
         return orbital_table
 
+    else:
+        raise ValueError(f'No orbital energies and occupations table was found.')
+
 def read_xtb_log1(regular_xtb_calculation_log: Path,
                   natoms: int,
                   debug: bool = False):
@@ -576,7 +582,7 @@ def read_xtb_log1(regular_xtb_calculation_log: Path,
         text = infile.read()
 
     if 'convergence criteria cannot be satisfied within' in text:
-        print(f'\t[WARNING] {regular_xtb_calculation_log.absolute()} did not converge.')
+        logger.warning('%s did not converged', regular_xtb_calculation_log.absolute())
 
     # Get the Mulliken charges and alpha values, capture everything between alpha(0) and Mol. C6AA
     COVCN_Q_C6AA_ALPHA_TABLE_PATTERN = re.compile(r'(?<=α\(0\)\n)(.*?)(?=Mol. C6AA /au)', re.DOTALL)
@@ -590,7 +596,7 @@ def read_xtb_log1(regular_xtb_calculation_log: Path,
         muls = COVCN_Q_C6AA_ALPHA_TABLE['q'].astype(float).to_list()
         alphas = COVCN_Q_C6AA_ALPHA_TABLE['alpha(0)'].astype(float).to_list()
     else:
-        print(f'\t[WARNING] Could not extract alphas and mulliken charges from {regular_xtb_calculation_log.absolute()}')
+        logger.warning('Could not extract alphas and Mulliken charges from %s', regular_xtb_calculation_log.absolute())
         alphas = []
         muls = []
 
@@ -603,9 +609,8 @@ def read_xtb_log1(regular_xtb_calculation_log: Path,
         x, y, z, total = [float(x) for x in MOL_DIPOLE.split('full:')[1].strip().split(' ')]
         dip = [x, y, z]
     else:
-        print(f'\t[WARNING] Could not extract molecular dipole from {regular_xtb_calculation_log.absolute()}')
+        logger.warning('Could not extract molecular dipole from %s', regular_xtb_calculation_log.absolute())
         dip = [0.0,0.0,0.0]
-
 
     # Get molecular polarizability
     MOL_POLARIZABILITY_PATTERN = re.compile(r'(?<=Mol. α\(0\) /au        :)(.*?)(?=\n)', re.DOTALL)
@@ -613,7 +618,7 @@ def read_xtb_log1(regular_xtb_calculation_log: Path,
     if len(matches) == 1:
         alpha = float(matches[0])
     else:
-        print(f'\t[WARNING] Could not extract molecular polarizablity (alpha) from {regular_xtb_calculation_log.absolute()}')
+        logger.warning('Could not extract molecular polarizablity (alpha) from from %s', regular_xtb_calculation_log.absolute())
         alpha = None
 
     # Get fukui
@@ -627,7 +632,7 @@ def read_xtb_log1(regular_xtb_calculation_log: Path,
         for i, row in FUKUI_TABLE.iterrows():
             fukui.append([float(row['f(+)']), float(row['f(-)']), float(row['f(0)'])])
     else:
-        print(f'\t[WARNING] Could not extract fukui from {regular_xtb_calculation_log.absolute()}')
+        logger.warning('Could not extract fukui from from %s', regular_xtb_calculation_log.absolute())
         fukui = []
 
     # Get HOMO-LUMO gap (one of two extractions, for some reason it's done in )
@@ -636,7 +641,7 @@ def read_xtb_log1(regular_xtb_calculation_log: Path,
     if len(matches) == 1:
         HOMO_LUMO_gap = float(matches[0])
     else:
-        print(f'\t[WARNING] Could not extract HOMO-LUMO gap from {regular_xtb_calculation_log.absolute()}')
+        logger.warning('Could not extract molecular HOMO-LUMO gap from from %s', regular_xtb_calculation_log.absolute())
         HOMO_LUMO_gap = None
 
     # Get Wiberg/Mayer (AO) data (get the total bond order for each atom)
@@ -646,10 +651,14 @@ def read_xtb_log1(regular_xtb_calculation_log: Path,
     wils = [float(x.strip().split()[3]) for x in matches]
 
     # Get the table of energies and occupations
-    orbital_energies_and_occupation_table = _get_orbital_energies_and_occupations_table(file_text=text)
-
-    occ_energies = orbital_energies_and_occupation_table.loc[orbital_energies_and_occupation_table['DESIGNATION'].isin(['(HOMO)', 'occ']), 'Energy(Ev)'].astype(float).to_list()
-    virt_energies = orbital_energies_and_occupation_table.loc[orbital_energies_and_occupation_table['DESIGNATION'].isin(['(LUMO)', 'virt']), 'Energy(Ev)'].astype(float).to_list()
+    try:
+        orbital_energies_and_occupation_table = _get_orbital_energies_and_occupations_table(file_text=text)
+        occ_energies = orbital_energies_and_occupation_table.loc[orbital_energies_and_occupation_table['DESIGNATION'].isin(['(HOMO)', 'occ']), 'Energy(Ev)'].astype(float).to_list()
+        virt_energies = orbital_energies_and_occupation_table.loc[orbital_energies_and_occupation_table['DESIGNATION'].isin(['(LUMO)', 'virt']), 'Energy(Ev)'].astype(float).to_list()
+    except ValueError as e:
+        logger.error('Could not get occ_energies and virt_energies because %s. Setting values to None.', e)
+        occ_energies = None
+        virt_energies = None
 
     if debug:
         print(f'\t[DEBUG] alpha: {alpha}')
@@ -667,7 +676,7 @@ def read_xtb_log1(regular_xtb_calculation_log: Path,
 
     esp_profile = []
     if not ESP_PROFILE_PATH.exists():
-        print(f'\t[WARNING] Could not find ESP_PROFILE_PATH {ESP_PROFILE_PATH}')
+        logger.warning('Could not find ESP_PROFILE_PATH %s', ESP_PROFILE_PATH.absolute())
     else:
         for line in open(ESP_PROFILE_PATH, 'r', encoding='utf-8'):
             potential_esp_data = list(re.split('\s+', line.strip()))
@@ -677,7 +686,7 @@ def read_xtb_log1(regular_xtb_calculation_log: Path,
     # Read in the ESP_DAT_PATH
     esp_points = []
     if not ESP_DAT_PATH.exists():
-        print(f'\t[WARNING] Could not find ESP_DAT_PATH {ESP_DAT_PATH}')
+        logger.warning('Could not find ESP_DAT_PATH %s', ESP_DAT_PATH.absolute())
     else:
         for line in open(ESP_DAT_PATH, 'r', encoding='utf-8'):
             potential_esp_data = list(re.split('\s+', line.strip()))
@@ -688,26 +697,29 @@ def read_xtb_log1(regular_xtb_calculation_log: Path,
                 raise ValueError('ESP points were not of length 4')
 
     # If something went wrong with the parameter extraction, return None
-    if len(occ_energies) == 0:
-        print(f'\t[WARNING] Setting occ_energies to None.')
-        occ_energies = None
-    if len(virt_energies) == 0:
-        print(f'\t[WARNING] Setting virt_energies to None.')
-        virt_energies = None
+    if occ_energies is not None:
+        if len(occ_energies) == 0:
+            logger.warning('\tSetting occ_energies to None')
+            occ_energies = None
+    if virt_energies is not None:
+        if len(virt_energies) == 0:
+            logger.warning('\tSetting virt_energies to None')
+            virt_energies = None
+
     if len(fukui) != natoms:
-        print(f'\t[WARNING] Setting fukui to None.')
-        fukui=None
+        logger.warning('\tSetting fukui to None.')
+        fukui = None
     if len(wils) != natoms:
-        print(f'\t[WARNING] Setting wils to None.')
+        logger.warning('\tSetting wils to None.')
         wils = None
     if len(alphas) != natoms:
-        print(f'\t[WARNING] Setting alphas to None.')
+        logger.warning('\tSetting alphas to None.')
         alphas = None
     if len(esp_profile) == 0:
-        print(f'\t[WARNING] Could not extract esp profile data from {ESP_PROFILE_PATH.absolute()}.')
-        esp_profile=None
+        logger.warning('\tCould not extract esp profile data from %s', ESP_PROFILE_PATH.absolute())
+        esp_profile = None
     if len(esp_points) == 0:
-        print(f'\t[WARNING] Could not extract esp point data from {ESP_DAT_PATH.absolute()}.')
+        logger.warning('\tCould not extract esp point data from %s', ESP_DAT_PATH.absolute())
         esp_points = None
 
     return muls, alphas, wils, dip, alpha, fukui, HOMO_LUMO_gap, esp_profile, esp_points, occ_energies, virt_energies
@@ -751,7 +763,7 @@ def read_xtb_log2(logfile: Path,
 
     # If the calculation failed, raise an error
     if 'convergence criteria cannot be satisfied within' in text:
-        print(f'\t[WARNING] {logfile.absolute()} did not converge.')
+        logger.warning('%s did not converge. Returning None.', logfile.absolute())
         return None, None, None, None
 
     # Get the EA_delta_SCC

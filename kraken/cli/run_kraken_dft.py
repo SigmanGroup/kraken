@@ -49,24 +49,30 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)]
 )
 
+logger = logging.getLogger(__name__)
 
-DESCRIPTION = r"""
+DESCRIPTION = r'''
+╔══════════════════════════════════════╗
+║   | |/ / _ \  /_\ | |/ / __| \| |    ║
+║   | ' <|   / / _ \| ' <| _|| .` |    ║
+║   |_|\_\_|_\/_/ \_\_|\_\___|_|\_|    ║
+╚══════════════════════════════════════╝
+Kolossal viRtual dAtabase for moleKular dEscriptors
+of orgaNophosphorus ligands.
 
 
-               ╔══════════════════════════════════════╗
-               ║   | |/ / _ \  /_\ | |/ / __| \| |    ║
-               ║   | ' <|   / / _ \| ' <| _|| .` |    ║
-               ║   |_|\_\_|_\/_/ \_\_|\_\___|_|\_|    ║
-               ╚══════════════════════════════════════╝
+This is the second script required to run the Kraken
+workflow. This script accepts a Kraken ID and a directory
+that contains a subdirectory with the specified Kraken ID.
+The <KRAKEN_ID>/dft/ folder must contain the .log and .chk
+files required to compute DFT properties.
 
+The script can be called directly in the terminal or
+called in a shell script that is submitted to SLURM
+or some other job scheduler.
+'''
 
-        Kolossal viRtual dAtabase for moleKular dEscriptorsclear
-                     of orgaNophosphorus ligands.
-
-        This is the second script for the Kraken workflow that processes
-          DFT files (.com, .chk, .log, .wfn) to generate properties.
-
-              """
+DESCRIPTION = '\n'.join(line.center(80) for line in DESCRIPTION.strip('\n').split('\n'))
 
 def get_args() -> argparse.Namespace:
     '''Gets the arguments for running Kraken'''
@@ -87,22 +93,22 @@ def get_args() -> argparse.Namespace:
                         dest='kraken_id',
                         required=True,
                         type=str,
-                        help='Input Kraken ID that lives in\n',
-                        metavar='')
+                        help='Input Kraken ID for which the DFT processing is done\n\n',
+                        metavar='INT')
 
     parser.add_argument('-d', '--dir',
                         dest='datadir',
                         required=True,
                         type=str,
-                        help='Directory in which the Kraken ID folder exists\n',
-                        metavar='')
+                        help='Directory in which the Kraken ID folder exists\n\n',
+                        metavar='DIR')
 
     parser.add_argument('-n', '--nprocs',
                         dest='nprocs',
                         default=4,
                         type=int,
-                        help='Number of processors\n',
-                        metavar='')
+                        help='Number of processors to use\n\n',
+                        metavar='INT')
 
     parser.add_argument('--force',
                         action='store_true',
@@ -119,11 +125,11 @@ def get_args() -> argparse.Namespace:
 # Custom pretty printer
 PRINTER = PrettyPrinter(indent=2)
 
-MULTIWFN_EXECUTABLE = Path('/uufs/chpc.utah.edu/common/home/u6053008/kraken_dft/new_kraken_dft/kraken/executables/Multiwfn_3.7_bin_Linux_noGUI/Multiwfn')
-MULTIWFN_SETTINGS_FILE = Path('/uufs/chpc.utah.edu/common/home/u6053008/kraken_dft/new_kraken_dft/kraken/executables/Multiwfn_3.7_bin_Linux_noGUI/settings.ini')
+MULTIWFN_EXECUTABLE = Path('/uufs/chpc.utah.edu/common/home/u6053008/kraken/kraken/executables/Multiwfn_3.7_bin_Linux_noGUI/Multiwfn')
+MULTIWFN_SETTINGS_FILE = Path('/uufs/chpc.utah.edu/common/home/u6053008/kraken/kraken/executables/Multiwfn_3.7_bin_Linux_noGUI/settings.ini')
 
-DFTD3_EXECUTABLE = Path('/uufs/chpc.utah.edu/common/home/u6053008/kraken_dft/new_kraken_dft/kraken/executables/dftd3')
-DFTD4_EXECUTABLE = Path('/uufs/chpc.utah.edu/common/home/u6053008/kraken_dft/new_kraken_dft/kraken/executables/dftd4')
+DFTD3_EXECUTABLE = Path('/uufs/chpc.utah.edu/common/home/u6053008/kraken/kraken/executables/dftd3')
+DFTD4_EXECUTABLE = Path('/uufs/chpc.utah.edu/common/home/u6053008/kraken/kraken/executables/dftd4')
 
 numbers_pattern = re.compile(r"[-+]?\d*\.\d+|\d+")
 
@@ -1098,7 +1104,7 @@ def run_end(kraken_id: str,
         ligand_data[f"{energy_type}_minconf"] = list(ligand_data["energies"][energy_type].keys())[np.argmin(list(ligand_data["energies"][energy_type].values()))]
 
         # Compute the relative energies
-        ligand_data["relative_energies"][f"{energy_type}_rel"] = {_conf_name: (ligand_data["energies"][energy_type][_conf_name] - ligand_data[f"{energy_type}_min"]) * HARTREE_TO_KCAL for _conf_name in ligand_data["conformers"]}
+        ligand_data["relative_energies"][f"{energy_type}_rel"] = {_conf_name: (ligand_data["energies"][energy_type][_conf_name] - ligand_data[f"{energy_type}_min"]) * HARTREE_TO_KCAL for _conf_name in sorted(ligand_data["conformers"])}
 
 
     # Get a relative energy dataframe
@@ -1259,20 +1265,16 @@ def run_end(kraken_id: str,
 
     logger.info('Finished writing DFT data for Kraken ID %s', kraken_id)
 
-if __name__ == "__main__":
-
-    # For old dftd4
-    # export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
-    # conda install conda-forge::libgfortran4
-    # module load intel-oneapi-compilers/2023.0.0 intel-oneapi-tbb/2021.8.0 intel-oneapi-mkl/2023.2.0
-
-    logger = logging.getLogger(__name__)
-
+def main():
+    '''Main entrypoint'''
     args = get_args()
 
     run_end(kraken_id=args.kraken_id,
             number_of_processors=args.nprocs,
-            parent_folder=args.datadir,
+            parent_folder=args.datadir / args.kraken_id,
             force_recalculation=args.force)
+
+if __name__ == "__main__":
+    main()
 
 

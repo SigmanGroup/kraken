@@ -1,1 +1,0 @@
-for /f %%i in ('dir c:\DA_IRCchk\*.fch /b') do Multiwfn c:\DA_IRCchk\%%i < MBObatch.txt > C:\DA_IRCchk\%%~ni.txt
