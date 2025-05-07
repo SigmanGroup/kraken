@@ -10,8 +10,8 @@
 
 module purge
 
-setenv OMP_NUM_THREADS $NPROCS
-setenv OMP_STACKSIZE 4G
+export OMP_NUM_THREADS $NPROCS
+export OMP_STACKSIZE 4G
 ulimit -s unlimited
 
 module load crest/2.12
