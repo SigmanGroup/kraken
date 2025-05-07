@@ -17,7 +17,7 @@ import argparse
 import subprocess
 
 from pathlib import Path
-from kraken.cli.run_kraken_conf_search import _parse_csv, _correct_kraken_id
+from .run_kraken_conf_search import _parse_csv, _correct_kraken_id
 
 SLURM_TEMPLATE = Path(__file__).parent.parent / 'slurm_templates/dft_slurm_template.sh'
 
