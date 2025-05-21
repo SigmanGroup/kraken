@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 from setuptools.extension import Extension
 from Cython.Build import cythonize
 
@@ -9,7 +9,7 @@ extensions = [
 setup(
     name='kraken',
     version='0.1',
-    packages=['kraken'],
+    packages=find_packages(),
     ext_modules=cythonize(extensions, language_level=3),
     zip_safe=False,
     entry_points={
