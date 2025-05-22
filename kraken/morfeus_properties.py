@@ -64,44 +64,63 @@ def run_morfeus(coords: NDArray,
 
     if suffix == 'Ni':
 
+        # Get the mask (the indices (0-index)) of the elements/coords that
+        # correspond only to the phosphine and not Ni and the 3 CO molecules
         mask, done = get_ligand_indices(coords=np.array(coords),
                                         elements=elements,
                                         P_index=P_index,
                                         smiles=smiles,
                                         metal_char=metal_char)
-
+        print(elements)
         if (not done) or (mask is None):
             logger.critical('get_ligand_indices returned (mask, done) of (%s, %s)', mask, done)
             exit()
 
         # This raises a ValueError if the metal_char is not in elements
+        # Get the Pd index in the elements list for the full complex
         pd_idx_full_ligand = list(elements).index(metal_char)
 
-        # Extend the molecule
+        # Make two identical pairs of list for holding the coords/elements of the
+        # masked ligand (i.e., no Ni(CO)3 complex)
         coords_list = []
         elements_list = []
+
         coords_extended = []
         elements_extended = []
 
-        # Iterate through the indices of the mask
+        # Iterate through the indices of the mask that correspond to just the ligand
         for atomidx in mask:
+
+            # Get the coordinates of that atom
             atom = coords[atomidx]
+
+            # Add the atomic symbol to elements extended
             elements_extended.append(elements[atomidx])
-            coords_extended.append([atom[0],atom[1],atom[2]])
-            coords_list.append([atom[0],atom[1],atom[2]])
+
+            # Add the coordinates of that atom to the coords_extended
+            coords_extended.append([atom[0], atom[1], atom[2]])
+
+            # Add these once again to the duplicates for some reason?
+            coords_list.append([atom[0], atom[1], atom[2]])
             elements_list.append(elements[atomidx])
 
+        # To the coords extended, add the coordinates of the Pd atom form the
+        # coordinates of the complex. Then add the metal character to the
+        # list of elements extended.
+        # THIS LOGIC LOOKS LIKE IT IS REMOVING THE CARBONYLS BUT NOT THE PD
+        # THAT MIGHT BE THE PURPOSE OF ALL OF THIS
         coords_extended.append(coords[pd_idx_full_ligand])
-
-        elements_extended+=[metal_char]
+        elements_extended += [metal_char]
 
         # Get another p_idx but this is not capitalized?
-        p_idx = list(elements).index('P')
+        # Get the index of the phosphorus atom from the
+        # entire complex (i.e., not the truncated coords/elements)
+        p_idx = list(elements_extended).index('P')
 
-        # Get the pd_idx
-        pd_idx = list(elements).index(metal_char)
+        # Get the pd_idx with the same specifications as above
+        pd_idx = list(elements_extended).index(metal_char)
 
-        # Get the dummy_idx
+        # Get the dummy_idx (this should just be the metal charge we just added)
         dummy_idx = len(elements_extended) - 1
 
         # Save the sterimol input to a file
@@ -111,7 +130,7 @@ def run_morfeus(coords: NDArray,
                   comment=f'File used for MORFEUS sterimol (metal_containing). p_idx: {p_idx} pd_idx: {pd_idx}',
                   mask=[])
 
-        atom_distances_to_p = scsp.distance.cdist([coords_extended[p_idx]],coords_extended)[0]
+        atom_distances_to_p = scsp.distance.cdist([coords_extended[p_idx]], coords_extended)[0]
 
         neighbor_indeces = [i for i in np.argsort(atom_distances_to_p)[1:4] if i != pd_idx]
 

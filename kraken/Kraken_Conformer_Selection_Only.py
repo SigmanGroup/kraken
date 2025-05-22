@@ -250,7 +250,7 @@ def select_RMSD(suffixes: list[str],
 
             # Run the strictRMSDPrune
             # pruned_le are the actual geometries, pruned_indices_le contains the indices of the selected conformers
-            pruned_le, pruned_indices_le, actualRMSDcutoff = ConfPrune.StrictRMSDPrune(conformers, elements_all[suffix][0], selection_settings.InitialRMSDcutoff, PerStructConfLimit)
+            pruned_le, pruned_indices_le, actualRMSDcutoff = StrictRMSDPrune(conformers, elements_all[suffix][0], selection_settings.InitialRMSDcutoff, PerStructConfLimit)
 
         else:
             # Select all conformers if the threshold of number of confs exceeds the
@@ -265,7 +265,7 @@ def select_RMSD(suffixes: list[str],
             num_conformers_he = len(energies[suffix]) - number_of_conformers_below_energy_cutoff
             if num_conformers_he > selection_settings.PerStructConfLimit:
                 conformers = [[[elements_all[suffix][0][j],coords_all[suffix][i][j][0],coords_all[suffix][i][j][1],coords_all[suffix][i][j][2]] for j in range(len(elements_all[suffix][0]))] for i in range(number_of_conformers_below_energy_cutoff,num_conformers_he)]
-                pruned_he, pruned_indices_tmp, actualRMSDcutoff = ConfPrune.StrictRMSDPrune(conformers, elements_all[suffix][0], selection_settings.InitialRMSDcutoff, selection_settings.PerStructConfLimit)
+                pruned_he, pruned_indices_tmp, actualRMSDcutoff = StrictRMSDPrune(conformers, elements_all[suffix][0], selection_settings.InitialRMSDcutoff, selection_settings.PerStructConfLimit)
                 pruned_indices_he = [i+number_of_conformers_below_energy_cutoff for i in pruned_indices_tmp]
             else:
                 pruned_indices_he = [i for i in range(number_of_conformers_below_energy_cutoff, num_conformers_he)]

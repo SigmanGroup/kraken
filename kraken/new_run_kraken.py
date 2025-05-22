@@ -341,14 +341,14 @@ def run_kraken_calculation(kraken_id: str,
             logger.info('Running MORFEUS on %s(conformer %d of %d)', xyz_file_path.name, conf_idx + 1, len(coords_all))
 
             morfeus_parameters = run_morfeus(coords=conformer_coordinates,
-                                                   elements=elements_conf,
-                                                   dummy_positions=dummy_positions,
-                                                   dummy_distance=dummy_distance,
-                                                   P_index=morfeus_phosphorus_index,
-                                                   metal_char=metal_char,
-                                                   conf_dir=conf_dir,
-                                                   suffix=job,
-                                                   smiles=smiles)
+                                             elements=elements_conf,
+                                             dummy_positions=dummy_positions,
+                                             dummy_distance=dummy_distance,
+                                             P_index=morfeus_phosphorus_index,
+                                             metal_char=metal_char,
+                                             conf_dir=conf_dir,
+                                             suffix=job,
+                                             smiles=smiles)
 
             morfeus_parameters_conformers.append(morfeus_parameters)
 
