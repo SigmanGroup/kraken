@@ -230,7 +230,7 @@ original Kraken publications and the new workflow for approximately 30 monophosp
 
 ## Including new templates for submission to HPC clusters
 If you wish to submit batches of Kraken calculations (either the conformer search or the DFT portion of the workflow) to other systems that are not the Notchpeak Sigman owner nodes,
-you will need to create additional `.slurm` templates that are compatible with `/kraken/cli/example_conf_search_submission_script.py` and `/kraken/cli/example_dft_submission_script.py`
+you will need to create additional `.slurm` templates that are compatible with `/kraken/cli/example_conf_search_submission_script.py` and `/kraken/cli/example_dft_submission_script.py`.
 The slurm scripts should contain the call to `run_kraken_conf_search` and `run_kraken_dft` along with placeholders for the following variables.
 
 $TIME - Time in hours for the jobs <br>

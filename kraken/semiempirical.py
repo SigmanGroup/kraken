@@ -85,10 +85,13 @@ def call_crest(file: Path,
             first_letter = item.name[0]
             item_name = item.name
             if first_letter == 'M' or first_letter == 'N' or item_name == "wbo" or item_name == "coord" or "_rotamers_" in item_name or ".tmp" in item_name or first_letter == '.' or item_name == "coord.original":
-                if item.is_dir():
-                    shutil.rmtree(item)
-                elif item.is_file():
-                    item.unlink()
+                try:
+                    if item.is_dir():
+                        shutil.rmtree(item)
+                    elif item.is_file():
+                        item.unlink()
+                except Exception as e:
+                    logger.error('Could not remove %s because %s', str(item.absolute()), str(e))
 
     return
 
