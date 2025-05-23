@@ -71,7 +71,7 @@ def run_morfeus(coords: NDArray,
                                         P_index=P_index,
                                         smiles=smiles,
                                         metal_char=metal_char)
-        print(elements)
+
         if (not done) or (mask is None):
             logger.critical('get_ligand_indices returned (mask, done) of (%s, %s)', mask, done)
             exit()

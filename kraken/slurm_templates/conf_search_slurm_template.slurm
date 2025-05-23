@@ -16,7 +16,8 @@ ulimit -s unlimited
 
 module load crest/2.12
 
-run_kraken_conf_search.py \
+# Format the command
+run_kraken_conf_search \
     -i "$SMILES" \
     --kraken-id $KID \
     --nprocs $NPROCS \

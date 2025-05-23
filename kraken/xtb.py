@@ -210,7 +210,6 @@ def get_results_conformer(regular_xtb_calculation_log: Path,
 
     return True, muls, alphas, wils, dip, alpha, fukui, HOMO_LUMO_gap, IP_delta_SCC, EA_delta_SCC, global_electrophilicity_index, esp_profile, esp_points, occ_energies, virt_energies, nucleophilicity
 
-
 def read_xtb_log1_orig_xtb(regular_xtb_calculation_log: Path,
                            natoms: int):
     '''

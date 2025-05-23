@@ -38,8 +38,7 @@ pip install .
 ```
 ## Example Usage (submission to CHPC for the Sigman group)
 These instructions are for Sigman group members to submit batches of calculations to the Sigman owner nodes on Notchpeak. For other users outside of the Sigman group, please
-see (and modify) the SLURM templates in the `kraken/slurm_templates` directory to accommodate your job scheduler. Please note that special symbols exist in the SLURM templates
-that are substituted with actual values required by SLURM including `$KID`, `$NPROCS`, `$MEM`, and several others.
+see (and modify) the SLURM templates in the `kraken/slurm_templates` directory to accommodate your job scheduler __before installation__. Please note that special symbols exist in the SLURM templates that are substituted with actual values required by SLURM including `$KID`, `$NPROCS`, `$MEM`, and several others.
 
 1. Format a `.csv` file that contains your monophosphine SMILES string, kraken id, and conversion flag:
 
@@ -52,7 +51,7 @@ that are substituted with actual values required by SLURM including `$KID`, `$NP
 2. Run the example submission script with your requested inputs and configurations:
 
 ```bash
-example_conf_search_submission_script.py --csv small_molecules.csv --nprocs 8 --mem 16 --time 6 --calculation-dir ./data/ --debug
+example_conf_search_submission_script --csv small_molecules.csv --nprocs 8 --mem 16 --time 6 --calculation-dir ./data/ --debug
 ```
 
 3. After completion, inspect SLURM log files (`*.log`, `*.error`) for errors/warnings (`ERROR`, `WARNING`).
@@ -62,7 +61,7 @@ example_conf_search_submission_script.py --csv small_molecules.csv --nprocs 8 --
     a. Move DFT files to a common directory:
 
     ```bash
-    extract_dft_files.py --input ./data/ --destination ./dft_calculation_folder_for_convenience/
+    extract_dft_files --input ./data/ --destination ./dft_calculation_folder_for_convenience/
     ```
 
     b. Submit DFT calculations:
@@ -74,7 +73,7 @@ example_conf_search_submission_script.py --csv small_molecules.csv --nprocs 8 --
     c. Return results to their directories:
 
     ```bash
-    return_dft_files.py --input ./dft_calculation_folder_for_convenience/ --destination ./data/
+    return_dft_files --input ./dft_calculation_folder_for_convenience/ --destination ./data/
     ```
 
 5. Evaluate DFT jobs for errors. For help, use [GaussianLogfileAssessor](https://github.com/thejameshoward/GaussianLogfileAssessor.git).
@@ -82,12 +81,14 @@ example_conf_search_submission_script.py --csv small_molecules.csv --nprocs 8 --
 6. Submit the DFT portion of the Kraken workflow:
 
 ```bash
-example_dft_submission_script.py --csv small_molecules.csv --nprocs 8 --mem 16 --time 6 --calculation-dir ./data/ --debug
+example_dft_submission_script --csv small_molecules.csv --nprocs 8 --mem 16 --time 6 --calculation-dir ./data/ --debug
 ```
 
 7. Check SLURM `.log` and `.error` files and raise an issue on this repo if necessary.
 
 ## Example Usage (directly running on a compute node)
+Kraken can also be executed directly from the commandline. This can be useful if you wish to create your own wrapper scripts for submission to other HPC systems.
+Please not that running this script will call computationally intensive programs and should not be run on head nodes.
 
 1. Format a `.csv` file that contains your monophosphine SMILES string, KRAKEN_ID, and CONVERSION_FLAG:
 
@@ -100,7 +101,7 @@ example_dft_submission_script.py --csv small_molecules.csv --nprocs 8 --mem 16 -
 2. Run the first Kraken script on a `.csv` file containing the columns `SMILES`, `KRAKEN_ID`, and `CONVERSION_FLAG`:
 
 ```bash
-run_kraken_conf_search.py -i ./data/input_file.csv --nprocs 4 --calculation-dir ./data/ --debug > kraken_conf_search.log
+run_kraken_conf_search -i ./data/input_file.csv --nprocs 4 --calculation-dir ./data/ --debug > kraken_conf_search.log
 ```
 
 3. After the script terminates, navigate to `./data/` to find the conformer search directories. Each `<KRAKEN_ID>/dft/` folder contains the `.com` files
@@ -108,12 +109,14 @@ run_kraken_conf_search.py -i ./data/input_file.csv --nprocs 4 --calculation-dir 
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a. Move DFT input files to a centralized directory:<br>
 
-    extract_dft_files.py --input ./data/ --destination ./dft_calculation_folder_for_convenience/
+```bash
+extract_dft_files --input ./data/ --destination ./dft_calculation_folder_for_convenience/
+```
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;b. After running the DFT calculations, return the results to their original locations:<br>
 
 ```bash
-return_dft_files.py --input ./dft_calculation_folder_for_convenience/ --destination ./data/
+return_dft_files --input ./dft_calculation_folder_for_convenience/ --destination ./data/
 ```
 
 4. After confirming the `.log`, `.chk`, and `.wfn` files are present in `<KRAKEN_ID>/dft/`, run the final Kraken DFT processing step.
@@ -196,30 +199,50 @@ Eike Caldeweyher, Jan-Michael Mewes, Sebastian Ehlert, Stefan Grimme. <br>
 2.  The original version of xTB often fails or produces incorrect results when using the --esp and --vipea flag. Newer versions have not failed in our testing.
 3.  The original code is designed to ignore descriptors that are assigned `None` as a result of xTB failure. This behavior is retained.
 4.  Despite refactoring, the codebase still contains unused code.
-5.  The conda versions of xtb and CREST are incompatible with Kraken. They frequently crashed during the --vipea calculations. The precompiled binaries of each release should be used or compiled directly.
+5.  The conda versions of xtb and CREST are incompatible with Kraken. They frequently crashed during the --vipea calculations. The precompiled binaries of each release should be used or compiled directly. This workflow was developed with CREST 2.12 and xTB 6.4.0.
 
-# Developer notes
+```
+
+       ==============================================
+       |                                            |
+       |                 C R E S T                  |
+       |                                            |
+       |  Conformer-Rotamer Ensemble Sampling Tool  |
+       |          based on the GFN methods          |
+       |             P.Pracht, S.Grimme             |
+       |          Universitaet Bonn, MCTC           |
+       ==============================================
+       Version 2.12,   Thu 19. Mai 16:32:32 CEST 2022
+  Using the xTB program. Compatible with xTB version 6.4.0
+
+```
+
+
+# Developers
 ## Differences when using newer SQM programs
 1.  Several descriptors vary substantially with xtb 6.7.0 or greater (EA/IP descriptors, nucleophilicity) because IPEA-xTB is not used for vertical IP/EA calculations. This will likely not affect the DFT level descriptors.
 2.  Crest v2.12 produces many more conformers than crest v2.8. Because conformers for DFT calculations are selected based on properties, the number of conformers for DFT calculations should remain unchanged.
 
-## Setting up environment for old version of xtb
+## Comparison between old and new workflows
+The code for this updated workflow was adapted from the original Kraken code. Some aspects have been altered for ease of use like automating .fchk generation. Updates to the
+code should be done carefully so as to not impact the final descriptors produced at the end of the workflow. We have included a comparison between the descriptors from the
+original Kraken publications and the new workflow for approximately 30 monophosphines in the validation/ folder.
 
-1.  Activate kraken
+## Including new templates for submission to HPC clusters
+If you wish to submit batches of Kraken calculations (either the conformer search or the DFT portion of the workflow) to other systems that are not the Notchpeak Sigman owner nodes,
+you will need to create additional `.slurm` templates that are compatible with `/kraken/cli/example_conf_search_submission_script.py` and `/kraken/cli/example_dft_submission_script.py`
+The slurm scripts should contain the call to `run_kraken_conf_search` and `run_kraken_dft` along with placeholders for the following variables.
 
-```bash
-conda activate kraken
-```
-<br>
-2.  Add the desired version of xtb to your path (this is written for development but will be clean in the final docs)
+$TIME - Time in hours for the jobs <br>
+$NPROCS - Number of processors to request for the job <br>
+$MEM - Amount of memory in Gigabytes to request for the job <br>
+$KID - 8-digit Kraken ID <br>
+$CALCDIR - Calculation directory for the job <br>
+$SMILES - Placeholder for the SMILES string of the monophosphines (only required for conf search portion) <br>
+$CONVERSION_FLAG - Flag for method for generating coordinates from SMILES (default should be 4, only for conf search portion) <br>
 
-```export PATH=/home/sigman/kraken-xtb/6.2.2/bin/:/home/sigman/opt/openmpi/bin:/home/sigman/orca:/home/sigman/anaconda3/envs/krakendevclean/bin:/home/sigman/anaconda3/condabin:/home/sigman/.vscode/cli/servers/Stable-abd2f3db4bdb28f9e95536dfa84d8479f1eb312d/server/bin/remote-cli:/home/sigman/opt/openmpi/bin:/home/sigman/orca:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin```
+Once you have created the new `.slurm` template, place it in the `/kraken/slurm_templates/` directory. You can then modify the `SLURM_TEMPLATE` variable in both  `/kraken/cli/example_conf_search_submission_script.py` and `/kraken/cli/example_dft_submission_script.py` submission scripts to point to your new `.slurm` file. Finally, install the Kraken package
+using the instructions above. Your new `.slurm` file will be used instead of the one provided in the repository.
 
-3.  export XTBPATH=/home/sigman/xtb/xtb-6.6.0/share/xtb/
-
-4.  Run Kraken on a single ligand
-
-## TODO
-1.  Provide details on the differences between xTB descriptors when using different xTB/CREST versions.
-2.  Add instructions for installation and using different xtb/crest versions.
-3.  Complete docstrings on functions
+## TO-DO
+1. Refactor SLURM_TEMPLATE usage in the submission scripts to allow users to change the way Kraken CLI scripts interact with HPC job schedulers.

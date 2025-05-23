@@ -2,11 +2,11 @@
 # coding: utf-8
 
 '''
-Primary script for running Kraken
+Code for running Kraken conformer searches
 
 #TODO INCLUDE ORIGINAL AUTHORS OF CODE
 
-Major revisions March 2024 provided by:
+Major revisions March 2024:
     James Howard, PhD
 '''
 
@@ -32,7 +32,8 @@ from kraken.semiempirical import run_crest, _get_crest_version
 from kraken.xtb import _get_xtb_version, xtb_opt
 from kraken.Kraken_Conformer_Selection_Only import conformer_selection_main
 from kraken.file_io import write_xyz
-from kraken.utils import _str_is_smiles, get_coords_from_smiles, get_num_bonds_P, add_Hs_to_P
+from kraken.structure_generation import get_coords_from_smiles
+from kraken.utils import _str_is_smiles, get_num_bonds_P, add_Hs_to_P
 from kraken.utils import add_to_smiles, remove_complex, get_P_bond_indeces_of_ligand
 from kraken.utils import get_rotatable_bonds, reduce_data, combine_yaml
 from kraken.morfeus_properties import run_morfeus

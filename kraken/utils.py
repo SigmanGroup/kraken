@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-# coding: utf-8
+# -*- coding: utf-8 -*-
 
 '''
-Utility functions
+Utility functions for the conformer search portion of Kraken
 '''
 
 from __future__ import print_function
@@ -10,7 +10,6 @@ from __future__ import absolute_import
 from __future__ import annotations
 
 import re
-import os
 import math
 import logging
 
@@ -23,11 +22,7 @@ from numpy.typing import NDArray
 import scipy.spatial as scsp
 import scipy.linalg as scli
 
-from rdkit import Chem, Geometry
-from rdkit.Chem import rdmolops
-
-from .file_io import write_xyz
-from .structure_generation import get_coords_from_smiles_from_rdkit, get_coords_from_smiles_from_obabel
+from rdkit import Chem
 
 logger = logging.getLogger(__name__)
 
@@ -259,16 +254,14 @@ def get_bonds(coords, elements, force_bonds=False, forced_bonds=[]):
         bonds_to_remove = []
 
         for c_atom_idx in c_atom_indeces:
-            logger.warning('Found a carbon atom %d and a nitrogen atom', c_atom_idx)
 
             for bondidx, bond in enumerate(bonds):
 
-                elements_bond = [elements[bond[0]],elements[bond[1]]]
+                elements_bond = [elements[bond[0]], elements[bond[1]]]
 
                 if c_atom_idx in bond and "N" in elements_bond:
+                    logger.debug('Found a carbonyl carbon atom %d bound to a nitrogen atom. Removing bond idx %s', c_atom_idx, str(bondidx))
                     bonds_to_remove.append(bondidx)
-                    logger.warning('Remove bondidx %s', bondidx)
-
 
         # Reset the bonds
         bonds = [bond for idx, bond in enumerate(bonds) if idx not in bonds_to_remove]
@@ -1084,13 +1077,38 @@ def get_rotatable_bonds(smiles):
 
 def get_num_bonds_P(smiles: str) -> int:
     '''
-    Gets the number of bonds to phosphorus
+    Calculate the total bond order (valence) of the **single** phosphorus atom
+    present in a SMILES string.
+
+    The bond order is computed as the sum of the numeric bond values
+    (single = 1, double = 2, triple = 3, aromatic = 1.5) for every bond
+    attached to the first phosphorus atom encountered.
+
+    If RDKit fails to parse the SMILES, the function returns the default
+    valence of 3 with a warning message.
+
+    Parameters
+    ----------
+    smiles: str
+        SMILES of a molecule that contains exactly one phosphorus atom.
+
+    Returns
+    -------
+    int
+        Integer bond order (valence) of the selected phosphorus atom.
+
+    Raises
+    ------
+    ValueError
+        If the SMILES contains no phosphorus atom, contains more than one
+        phosphorus atom, includes an unsupported bond type, or yields a
+        non-integer total bond order.
     '''
 
     mol = Chem.MolFromSmiles(smiles)
 
     if mol is None:
-        print(f'[WARNING] Could not create mol from "{smiles}". Assuming P has 3 bonds.')
+        logger.critical('Could not create mol from %s. Assuming P has 3 bonds.', smiles)
         return 3
 
     atoms = mol.GetAtoms()
@@ -1100,13 +1118,22 @@ def get_num_bonds_P(smiles: str) -> int:
         raise ValueError(f'SMILES {smiles} does not have a phosphorus atom.')
 
     elif len(atoms) != 1:
-        logger.warning('Found more than one phosphorus atom in %s', smiles)
-        logger.warning('Selecting first phosphorus atom')
+        logger.warning('Found more than one phosphorus atom in %s. Selecting first phosphorus atom.', smiles)
 
-    # Get the phosphous atom object
+    # Get the phosphous RDKit atom object
     P_atom = atoms[0]
 
-    num_bonds=0.0
+    # Assign the number of bonds to phosphorus
+    num_bonds = 0.0
+
+    # Dictionary of bond values that will define
+    # the valence of an atom
+    bond_values = {
+        'SINGLE': 1.0,
+        'DOUBLE': 2.0,
+        'TRIPLE': 3.0,
+        'AROMATIC': 1.5,
+    }
 
     # Iterate through the bonds
     for bond in P_atom.GetBonds():
@@ -1114,19 +1141,16 @@ def get_num_bonds_P(smiles: str) -> int:
         # Get the bond type
         bondtype = bond.GetBondType()
 
+        if bondtype not in bond_values:
+            raise ValueError(f'Unknown bondtype {str(bondtype)}')
+
         logger.debug('Found a P bond: %s', str(bondtype))
 
-        if str(bondtype) == "SINGLE":
-            num_bonds += 1.0
-        elif str(bondtype) == "DOUBLE":
-            num_bonds += 2.0
-        elif str(bondtype) == "TRIPLE":
-            num_bonds += 3.0
-        elif str(bondtype) == "AROMATIC":
-            num_bonds += 1.5
+        num_bonds += bond_values[bondtype]
 
+    # Check if there is a non-integer number of bonds
     if abs(num_bonds - round(num_bonds)) > 0.1:
-        raise ValueError(f'SMILES {smiles} had {num_bonds} bonds.')
+        raise ValueError(f'SMILES {smiles} had {num_bonds} bonds when expecting an integer.')
 
     return int(num_bonds)
 
@@ -1237,68 +1261,6 @@ def add_to_smiles(smiles, add):
     p2 = smiles[P_index + 1:]
 
     return p1 + f"({add})" + p2
-
-def _program_is_callable_from_commandline(program) -> str | None:
-    '''
-    Determines if a program executable is callable
-    via commandline (and thus, subprocess). If it is
-    returns, the string path of the executable. If it is
-    not available, returns None.
-    '''
-    def is_exe(fpath):
-        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
-
-    fpath, fname = os.path.split(program)
-    if fpath:
-        if is_exe(program):
-            return program
-    else:
-        for path in os.environ["PATH"].split(os.pathsep):
-            exe_file = os.path.join(path, program)
-            if is_exe(exe_file):
-                return exe_file
-
-    return None
-
-def get_coords_from_smiles(smiles: str,
-                           conversion_method: str) -> tuple[NDArray, NDArray]:
-    '''
-    Generates a 3D geometry from SMILES using a
-    conversion method.
-
-    Parameters
-    ----------
-    smiles: str
-        Smiles to be converted to 3D geometry
-
-    conversion_method: str
-        A conversion method to attempt. Acceptable values
-        are "rdkit", "obabel", "molconvert", or "any".
-
-    Returns
-    ----------
-    float | list[float]
-    '''
-
-    # If it is any
-    if conversion_method == 'any':
-        try:
-            coords, elements = get_coords_from_smiles_from_obabel(smiles=smiles)
-            if (coords is None ) or (elements is None):
-                raise ValueError(f'obabel conversion of smiles {smiles} returned None coordinates')
-        except Exception as e:
-            logger.error('Failed 3D generation with obabel because %s. Trying with RDKit', str(e))
-            coords, elements = get_coords_from_smiles_from_rdkit(smiles=smiles)
-    elif conversion_method == 'rdkit':
-        coords, elements = get_coords_from_smiles_from_rdkit(smiles=smiles)
-    elif conversion_method == 'obabel':
-        coords, elements = get_coords_from_smiles_from_obabel(smiles=smiles)
-    elif conversion_method == 'molconvert':
-        raise NotImplementedError(f'molconvert has been deprecated')
-    else:
-        raise ValueError(f'Could not understand converion method {conversion_method}')
-
-    return np.array(coords), np.array(elements)
 
 def remove_complex(coords: NDArray,
                    elements: NDArray,

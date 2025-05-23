@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-# coding: utf-8
+# -*- coding: utf-8 -*-
 
-'''Utility functions for the DFT portion of Kraken'''
+'''
+Utility functions for the DFT portion of Kraken
+'''
 
 import re
 import math
@@ -19,9 +21,9 @@ logger = logging.getLogger(__name__)
 
 # Define constants
 HARTREE_TO_KCAL = 627.509474 # conversion to kcal/mol; taken from https://en.wikipedia.org/wiki/Hartree (20.09.2018)
-BOHR_TO_ANGSTROM = 0.52917721067 # conversion from bohr to angstrom; taken from https://en.wikipedia.org/wiki/Bohr_radius (20.09.2018)
-R_GAS_CONSTANT_KCAL_PER_MOL_KELVIN = 0.0019872036 #kcal mol^-1 K^-1
-TEMPERATURE_IN_KELVIN = 298.15 #K
+BOHR_TO_ANGSTROM = 0.529177210544 # conversion from bohr to angstrom; taken from https://physics.nist.gov/cgi-bin/cuu/Value?bohrrada0 (23 May 2025)
+R_GAS_CONSTANT_KCAL_PER_MOL_KELVIN = 0.0019872036 # kcal mol^-1 K^-1
+TEMPERATURE_IN_KELVIN = 298.15
 
 rcov = {'H': 0.32, 'He': 0.46, 'Li': 1.2, 'Be': 0.94, 'B': 0.77, 'C': 0.75, 'N': 0.71,
         'O': 0.63, 'F': 0.64, 'Ne': 0.67, 'Na': 1.4, 'Mg': 1.25, 'Al': 1.13, 'Si': 1.04,
