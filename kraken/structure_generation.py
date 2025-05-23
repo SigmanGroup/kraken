@@ -26,7 +26,6 @@ from rdkit.Chem import AllChem
 
 logger = logging.getLogger(__name__)
 
-
 def get_coords_from_smiles_from_rdkit(smiles: str) -> tuple[NDArray, NDArray] | tuple[None, None]:
     '''
     Generates 3D coordinates and atomic elements from a SMILES string using RDKit.
@@ -168,3 +167,43 @@ def get_coords_from_smiles_from_obabel(smiles: str) -> tuple[NDArray, NDArray] |
         return None, None
 
     return coords, np.array(elements)
+
+def get_coords_from_smiles(smiles: str,
+                           conversion_method: str) -> tuple[NDArray, NDArray]:
+    '''
+    Generates a 3D geometry from SMILES using a
+    conversion method.
+
+    Parameters
+    ----------
+    smiles: str
+        Smiles to be converted to 3D geometry
+
+    conversion_method: str
+        A conversion method to attempt. Acceptable values
+        are "rdkit", "obabel", "molconvert", or "any".
+
+    Returns
+    ----------
+    float | list[float]
+    '''
+
+    # If it is any
+    if conversion_method == 'any':
+        try:
+            coords, elements = get_coords_from_smiles_from_obabel(smiles=smiles)
+            if (coords is None ) or (elements is None):
+                raise ValueError(f'obabel conversion of smiles {smiles} returned None coordinates')
+        except Exception as e:
+            logger.error('Failed 3D generation with obabel because %s. Trying with RDKit', str(e))
+            coords, elements = get_coords_from_smiles_from_rdkit(smiles=smiles)
+    elif conversion_method == 'rdkit':
+        coords, elements = get_coords_from_smiles_from_rdkit(smiles=smiles)
+    elif conversion_method == 'obabel':
+        coords, elements = get_coords_from_smiles_from_obabel(smiles=smiles)
+    elif conversion_method == 'molconvert':
+        raise NotImplementedError(f'molconvert has been deprecated')
+    else:
+        raise ValueError(f'Could not understand converion method {conversion_method}')
+
+    return np.array(coords), np.array(elements)

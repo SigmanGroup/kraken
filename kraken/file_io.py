@@ -40,7 +40,6 @@ def exportXYZs(coords,elements,filename):
     outfile.close()
 
 
-
 def read_xyz(file: Path) -> tuple[np.ndarray, list]:
     '''
     Reads a .xyz using custom xyz parsing and returns an array of
@@ -108,7 +107,7 @@ def exportXYZ(filename: str | Path,
 
 def write_xyz(destination: str | Path,
               coords: NDArray,
-              elements: NDArray,
+              elements: NDArray | list,
               comment: str = '',
               mask: list[int] = []) -> Path:
     '''

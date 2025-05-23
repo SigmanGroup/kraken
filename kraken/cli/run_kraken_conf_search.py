@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-# coding: utf-8
+# -*- coding: utf-8 -*-
+#
+# Author: James Howard, PhD
+# Affiliation: Department of Chemistry, The University of Utah
+# Date: 2025-05-23
 
 '''
-Primary script for running Kraken
-
-#TODO INCLUDE ORIGINAL AUTHORS OF CODE
-
-Major revisions March 2024 provided by:
-    James Howard, PhD
+This script can be run directly to run the conformer
+search portion of Kraken.
 
 FOR TESTING
-run_kraken_conf_search.py -i "CP(C)C" --kraken-id 88888888  --calculation-dir ./data/ --nprocs 4 --conversion-flag 4 --noreftopo --nocross
+run_kraken_conf_search.py -i "CP(C)C" --kraken-id 88888888 --calculation-dir ./data/ --nprocs 4 --conversion-flag 4 --noreftopo --nocross
 '''
 
 import os

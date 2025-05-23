@@ -17,9 +17,11 @@ import argparse
 import subprocess
 
 from pathlib import Path
+from importlib.resources import files
+
 from .run_kraken_conf_search import _parse_csv, _correct_kraken_id
 
-SLURM_TEMPLATE = Path(__file__).parent.parent / 'slurm_templates/dft_slurm_template.sh'
+SLURM_TEMPLATE = files("kraken") / "slurm_templates" / "dft_slurm_template.slurm"
 
 logger = logging.getLogger(__name__)
 

@@ -2,7 +2,7 @@
 # coding: utf-8
 
 '''
-The purpose of the file is unknown as of 15 Apr 2024
+Holds geometry for certain complexes
 '''
 
 import os
@@ -10,29 +10,51 @@ import numpy as np
 import scipy.spatial as scsp
 import scipy.linalg as scli
 
+from typing import Literal
+
+from numpy.typing import NDArray
+
 from rdkit import Chem, Geometry
 from rdkit.Chem import rdmolops, AllChem, rdMolAlign
 from rdkit.Chem.rdchem import Mol
 
-def get_Ni_CO_3():
-    crest_best=""" Ni         -2.05044275300666    0.06382544955011    0.09868120676498
- P          -2.80714796997979   -1.10266971180507   -1.69574169412280
- C          -2.69200378269657   -0.76605024888162    1.57419568293391
- O          -3.04257804499007   -1.20995335174270    2.55963300719774
- C          -2.69223663646763    1.74898458637508   -0.06255834794434
- O          -3.04279673881760    2.82969533618590   -0.06960307962299
- C          -0.24189533762829    0.01881947327896    0.02959721559736
- O           0.89275735454075    0.05117679841698    0.07869727019190"""
-    coords=[]
-    elements=[]
-    for line in crest_best.split("\n"):
-        elements.append(line.split()[0].capitalize())
-        coords.append([float(line.split()[1]),float(line.split()[2]),float(line.split()[3])])
-    coords=np.array(coords)
-    pd_idx=0
-    p_idx=1
-    return(coords, elements, pd_idx, p_idx)
+def get_Ni_CO_3() -> tuple[NDArray, list[str], Literal[0], Literal[1]]:
+    '''
+    Return Cartesian coordinates, elements, metal_index, and P_index
+    for a tetrahedral Ni(CO)₃P model complex.
 
+    Returns
+    -------
+    tuple
+        coords: ndarray of shape (8, 3)
+            XYZ coordinates in ångströms.  Row 0 is the Ni atom.
+
+        elements: list[str]
+            Atomic symbols in the same order as *coords*.
+
+        metal_idx: Literal[0]
+            Index of the nickel atom (always 0).
+
+        p_idx: Literal[1]
+            Index of the phosphorus atom (always 1).
+    '''
+
+    # In the old version, the capitalized atomic symbols are used
+    elements = ['NI', 'P', 'C', 'O', 'C', 'O', 'C', 'O']
+
+    # Coordinate array (it is unclear where this was acquired)
+    coords = np.array([[-2.05044275300666, 0.06382544955011, 0.09868120676498],
+                       [-2.80714796997979, -1.10266971180507, -1.69574169412280],
+                       [-2.69200378269657, -0.76605024888162, 1.57419568293391],
+                       [-3.04257804499007, -1.20995335174270, 2.55963300719774],
+                       [-2.69223663646763, 1.74898458637508, -0.06255834794434],
+                       [-3.04279673881760, 2.82969533618590, -0.06960307962299],
+                       [-0.24189533762829, 0.01881947327896, 0.02959721559736],
+                       [0.89275735454075, 0.05117679841698, 0.07869727019190],
+        ]
+    )
+
+    return coords, elements, 0, 1
 
 def get_Pd_NH3_Cl_Cl():
     crest_best=""" Pd         -1.89996002172552   -0.02498444632011    2.10982622577294
@@ -110,8 +132,6 @@ def rotationMatrix(vector,angle):
     matrix[2][1]=direction[1]*direction[2]*(1.0-np.cos(angle))+direction[0]*np.sin(angle)
 
     return(matrix)
-
-
 
 def replace(c1_i, e1_i, c2_i, e2_i,  Au_index, P_index, match_Au_index, match_P_index, smiles, rotate_third_axis=True):
 

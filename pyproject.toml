@@ -1,4 +1,29 @@
 [build-system]
-requires = ["setuptools", "cython"]
+requires = ["setuptools>=69", "cython>=3.0"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "kraken"
+version = "0.1"
+requires-python = ">=3.9"
+
+[project.scripts]
+extract_dft_files = "kraken.cli.extract_dft_files:main"
+return_dft_files = "kraken.cli.return_dft_files:main"
+run_kraken_dft = "kraken.cli.run_kraken_dft:main"
+run_kraken_conf_search = "kraken.cli.run_kraken_conf_search:main"
+example_conf_search_submission_script = "kraken.cli.example_conf_search_submission_script:main"
+example_dft_submission_script = "kraken.cli.example_dft_submission_script:main"
+
+[tool.setuptools]
+packages = ["kraken", "kraken.cli"]
+
+[tool.setuptools.package-data]
+"kraken" = [
+    "slurm_templates/*.slurm",
+    "executables/dftd3",
+    "executables/dftd4",
+    "executables/Multiwfn_3.7_bin_Linux_noGUI/Multiwfn",
+    "executables/Multiwfn_3.7_bin_Linux_noGUI/settings.ini",
+    "param_ipea-xtb.txt"
+]

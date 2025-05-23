@@ -14,6 +14,7 @@ import logging
 import subprocess
 
 from pathlib import Path
+from importlib.resources import files
 
 import numpy as np
 import pandas as pd
@@ -22,7 +23,7 @@ from .file_io import readXYZs, write_xyz
 from .utils import get_dummy_positions, get_ligand_indices
 from .xtb import call_xtb, _get_xtb_version_from_file, get_results_conformer
 
-XTB_PARAM_FILE = Path(__file__).parent / 'param_ipea-xtb.txt'
+XTB_PARAM_FILE = Path(files("kraken") / "param_ipea-xtb.txt")
 
 logger = logging.getLogger(__name__)
 

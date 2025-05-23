@@ -4,6 +4,7 @@
 {
     "distutils": {
         "depends": [],
+        "language": "c",
         "name": "kraken.ConfPruneIdx",
         "sources": [
             "kraken/ConfPruneIdx.pyx"

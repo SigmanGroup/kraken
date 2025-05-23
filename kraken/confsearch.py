@@ -24,19 +24,17 @@ from pathlib import Path
 import yaml
 import numpy as np
 
-sys.path.append(str(Path(__file__).parent.absolute()))
-
-#conf_prune_idx = Path(__file__).parent / 'ConfPruneIdx.pyx'
-#shutil.copy2(conf_prune_idx, Path.cwd() / conf_prune_idx.name)
 
 # Custom
-from kraken import geometry, utils
-from kraken.semiempirical import run_crest, xtb_opt, _get_xtb_version, _get_crest_version
+from kraken.geometry import get_Ni_CO_3, replace
+from kraken.xtb import xtb_opt, _get_xtb_version
+from kraken.semiempirical import run_crest, _get_crest_version
 from kraken.Kraken_Conformer_Selection_Only import conformer_selection_main
-from kraken.file_io import write_xyz
-from kraken.utils import _str_is_smiles, get_coords_from_smiles, get_num_bonds_P, add_Hs_to_P
+from kraken.file_io import read_xyz, write_xyz
+from kraken.structure_generation import get_coords_from_smiles
+from kraken.utils import _str_is_smiles, get_num_bonds_P, add_Hs_to_P
 from kraken.utils import add_to_smiles, remove_complex, get_P_bond_indeces_of_ligand
-from kraken.utils import get_rotatable_bonds
+from kraken.utils import get_rotatable_bonds, reduce_data, combine_yaml
 from kraken.morfeus_properties import run_morfeus
 
 logger = logging.getLogger(__name__)
@@ -247,11 +245,11 @@ def run_kraken_calculation(kraken_id: str,
                 match_p_idx = P_index
 
                 # replace(c1_i, e1_i, c2_i, e2_i,  Au_index, P_index, match_Au_index, match_P_index, rotate_third_axis=True)
-                #coords_pd, elements_pd, pd_idx, p_idx = geometry.get_Pd_NH3_Cl_Cl()
+                #coords_pd, elements_pd, pd_idx, p_idx = get_Pd_NH3_Cl_Cl()
                 #metal_char="Pd"
 
-                coords_pd, elements_pd, pd_idx, p_idx = geometry.get_Ni_CO_3()
-                success, coords, elements = geometry.replace(coords_pd, elements_pd, coords_ligand, elements_ligand, pd_idx, p_idx, match_pd_ind, match_p_idx, smiles, rotate_third_axis=True)
+                coords_pd, elements_pd, pd_idx, p_idx = get_Ni_CO_3()
+                success, coords, elements = replace(coords_pd, elements_pd, coords_ligand, elements_ligand, pd_idx, p_idx, match_pd_ind, match_p_idx, smiles, rotate_third_axis=True)
                 if elements==None:
                     exit(f'[FATAL] Elements is None for {smiles}. Exiting gracefully.')
                 if len(elements)==0:
@@ -290,7 +288,7 @@ def run_kraken_calculation(kraken_id: str,
 
         # Else if handed an xyz file
         else:
-            coords, elements = utils.readXYZ(xyz_file_path)
+            coords, elements = read_xyz(xyz_file_path)
             shutil.copy2(xyz_file_path, mol_dir / xyz_file_path.name)
             xyz_file_path = moldir / xyz_file_path.name
 
@@ -391,7 +389,7 @@ def run_kraken_calculation(kraken_id: str,
                 }
 
             # Sort the data in different output files and kill unnecessary data
-            data_here, data_here_confs, data_here_esp_points = utils.reduce_data(results)
+            data_here, data_here_confs, data_here_esp_points = reduce_data(results)
 
             # add the timings
             # TODO When computing the timings, they should be
@@ -418,9 +416,10 @@ def run_kraken_calculation(kraken_id: str,
             logger.info('Saved conformer file to %s', output_conformer_file.absolute())
 
             # Combine things
-            combined = utils.combine_yaml(kraken_id,
-                                          data_here,
-                                          data_here_confs)
+            combined = combine_yaml(kraken_id,
+                                    data_here,
+                                    data_here_confs)
+
             with open(output_combined_file, 'w', encoding='utf-8') as outfile:
                 outfile.write(yaml.dump(combined, default_flow_style=False))
             logger.info('Saved combined file to %s', output_combined_file.absolute())

@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
-# coding: utf-8
+# -*- coding: utf-8 -*-
+#
+# Author: James Howard, PhD
+# Affiliation: Department of Chemistry, The University of Utah
+# Date: 2025-04-10
+
+'''
+This script can be run directly to run
+the DFT portion of Kraken.
+'''
 
 import re
 import sys
@@ -13,6 +22,8 @@ from yaml import CLoader as Loader
 from yaml import CDumper as Dumper
 
 from pathlib import Path
+from importlib.resources import files
+
 import pandas as pd
 import numpy as np
 
@@ -125,11 +136,18 @@ def get_args() -> argparse.Namespace:
 # Custom pretty printer
 PRINTER = PrettyPrinter(indent=2)
 
-MULTIWFN_EXECUTABLE = Path(__file__).parent.parent / 'executables/Multiwfn_3.7_bin_Linux_noGUI/Multiwfn'
-MULTIWFN_SETTINGS_FILE = Path(__file__).parent.parent / 'executables/Multiwfn_3.7_bin_Linux_noGUI/settings.ini'
+# Executables called that are installed with Kraken
+_pkg = files("kraken")
 
-DFTD3_EXECUTABLE = Path(__file__).parent.parent / 'executables/dftd3'
-DFTD4_EXECUTABLE = Path(__file__).parent.parent / 'executables/dftd4'
+MULTIWFN_EXECUTABLE = Path(_pkg / "executables" / "Multiwfn_3.7_bin_Linux_noGUI" / "Multiwfn")
+MULTIWFN_SETTINGS = Path(_pkg / "executables" / "Multiwfn_3.7_bin_Linux_noGUI" / "settings.ini")
+DFTD3_EXECUTABLE = Path(_pkg / "executables" / "dftd3")
+DFTD4_EXECUTABLE = Path(_pkg / "executables" / "dftd4")
+
+logger.debug('Using MULTIWFN_EXECUTABLE %s', str(MULTIWFN_EXECUTABLE.absolute()))
+logger.debug('Using MULTIWFN_SETTINGS %s', str(MULTIWFN_SETTINGS.absolute()))
+logger.debug('Using DFTD3_EXECUTABLE %s', str(DFTD3_EXECUTABLE.absolute()))
+logger.debug('Using DFTD4_EXECUTABLE %s', str(DFTD4_EXECUTABLE.absolute()))
 
 numbers_pattern = re.compile(r"[-+]?\d*\.\d+|\d+")
 
