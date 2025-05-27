@@ -82,6 +82,11 @@ def get_args() -> argparse.Namespace:
                         help='Time requested in hours\n\n',
                         metavar='INT')
 
+    parser.add_argument('--slurm-template',
+                        dest='slurm_template',
+                        help='Formatted SLURM template with placeholders\n\n',
+                        metavar='STR')
+
     parser.add_argument('--calculation-dir',
                         dest='calc_dir',
                         default='./data/',
@@ -95,6 +100,11 @@ def get_args() -> argparse.Namespace:
     args.csv = Path(args.csv)
     if not args.csv.exists():
         raise FileNotFoundError(f'Could not locate {args.csv.absolute()} does not exist.')
+
+    if args.slurm_template is not None:
+        args.slurm_template = Path(args.slurm_template)
+        if not args.slurm_template.exists():
+            raise FileNotFoundError(f'Could not locate {args.slurm_template.absolute()} does not exist.')
 
     return args
 
@@ -136,6 +146,12 @@ def main() -> None:
     # Get the input file
     input_file = Path(args.csv)
 
+    # Get the slurm template if specified
+    if args.slurm_template is not None:
+        slurm_template = Path(args.slurm_template)
+    else:
+        slurm_template = Path(SLURM_TEMPLATE)
+
     ids, inputs, conversion_flags = _parse_csv(input_file)
 
     ids = [_correct_kraken_id(x) for x in ids]
@@ -161,7 +177,7 @@ def main() -> None:
                                  directory=calc_dir,
                                  time=args.time,
                                  destination=dest,
-                                 template=SLURM_TEMPLATE,
+                                 template=slurm_template,
                                  nprocs=args.nprocs,
                                  mem=args.mem)
 
