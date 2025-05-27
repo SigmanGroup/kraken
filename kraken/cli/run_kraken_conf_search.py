@@ -184,7 +184,7 @@ def _parse_csv(csv: Path) -> tuple[list, list, list]:
         raise ValueError(f'{csv.name} is not a .csv file.')
     df = pd.read_csv(csv, header=0)
 
-    if sorted(list(set(df.columns))) != ['CONVERSION_FLAG', 'KRAKEN_ID', 'SMILES']:
+    if not all([x in df.columns for x in ['CONVERSION_FLAG', 'KRAKEN_ID', 'SMILES']]):
         raise ValueError(f'{csv.name} is not properly formatted. Only use columns CONVERSION_FLAG, KRAKEN_ID, and SMILES.')
 
     return df['KRAKEN_ID'].to_list(), df['SMILES'].to_list(), df['CONVERSION_FLAG'].to_list()

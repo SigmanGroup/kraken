@@ -71,10 +71,10 @@ def call_crest(file: Path,
         proc = subprocess.run(args, stdout=crest_log_file, stderr=subprocess.PIPE, cwd=file.parent)
         stderr = proc.stderr.decode('utf-8')
 
-        print(f'[INFO] stderr in call_crest. Return code: {proc.returncode}')
-        print('-'*80)
-        print(stderr)
-        print('-'*80)
+        logger.debug('stderr in call_crest. Return code %d', proc.returncode)
+        logger.debug('-'*80)
+        logger.debug(stderr)
+        logger.debug('-'*80)
 
     # Sleep for some god damned reason
     #time.sleep(5)
@@ -285,7 +285,6 @@ def run_crest(file: Path,
 
                 logger.debug('len(dummy_positions): %d', len(dummy_positions))
 
-                #print(xtb_done_here,dummy_position_done_here)
                 electronic_properties_conformers.append({'muls': muls,
                                                          'alphas': alphas,
                                                          'wils': wils,
@@ -304,8 +303,6 @@ def run_crest(file: Path,
                                                          'nucleophilicity': nucleophilicity
                                                          })
 
-                #conf_idx+=1
-                #print("did conf %i, len of data: %i"%(conf_idx,len(electronic_properties_conformers)))
                 coords_all_used.append(coords_all[conf_idx])
                 elements_all_used.append(elements_all[conf_idx])
                 boltzmann_data_used.append(boltzmann_data[conf_idx])
@@ -345,15 +342,11 @@ def get_crest_results(file: Path):
     if not 'CREST terminated normally.' in text:
         raise ValueError(f'CREST did not complete successfully at {CREST_LOG.absolute()}.')
 
-    if METADYNAMICS_1.exists():
-        print(f'[WARNING] {METADYNAMICS_1.absolute()} exists and indicates an incomplete CREST job.')
+    # Do some additionally testing if CREST completed
+    for _crest_test_item in [METADYNAMICS_1, OPTIM, NORMMD_1]:
+        logger.warning('%s exists and indicates an incomplete CREST job', _crest_test_item.absolute())
 
-    if OPTIM.exists():
-        print(f'[WARNING] {OPTIM.absolute()} exists and indicates an incomplete CREST job.')
-
-    if NORMMD_1.exists():
-        print(f'[WARNING] {NORMMD_1.absolute()} exists and indicates an incomplete CREST job.')
-
+    # Read in all conformers
     coords_all, elements_all = readXYZs(CREST_CONFORMERS)
 
     # Get the Boltzmann data

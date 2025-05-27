@@ -581,7 +581,7 @@ def reduce_data(data_here: dict) -> tuple[dict, dict, dict]:
 
     # electronic_properties
     #######################
-    keys_to_delete=[]
+    keys_to_delete = []
 
     for key in data_here["conf_0"]["electronic_properties"].keys():
 
@@ -656,13 +656,15 @@ def reduce_data(data_here: dict) -> tuple[dict, dict, dict]:
             for confname in confnames:
                 _dip = data_here[confname]["electronic_properties"][key]
                 if _dip == [0.0, 0.0, 0.0]:
-                    print(f'\t[WARNING] {confname} had a dipole of [0, 0, 0]. Did this calculation finish?')
+                    logger.warning('\tconfname: %s had a dipole of [0, 0, 0]. Did this calculation finish?', confname)
+
                 data.append(data_here[confname]["electronic_properties"][key])
+
                 data_norm.append(np.linalg.norm(data_here[confname]["electronic_properties"][key]))
 
             # Check for 0 dipole!
             if [0.0, 0.0, 0.0] in data:
-                print(f'\t[WARNING] Dipole data contains [0, 0, 0] which may influence the dipole statistics.')
+                logger.warning('Dipole data contains [0, 0, 0] which may influence the dipole statistics.')
 
             # Turn them into an array
             data = np.array(data)
@@ -681,18 +683,22 @@ def reduce_data(data_here: dict) -> tuple[dict, dict, dict]:
             data_norm_std = np.average((data_norm-data_averaged_norm)**2.0, weights=weights, axis=0)**0.5
 
             # Assign the values to the master data dictionary
-            data_here["boltzmann_averaged_data"][key]=data_averaged.tolist()
-            data_here["boltzmann_averaged_data"][key+"_std"]=data_std.tolist()
-            data_here["boltzmann_averaged_data"]["dip_norm"]=data_averaged_norm.tolist()
-            data_here["boltzmann_averaged_data"]["dip_norm_std"]=data_norm_std.tolist()
-            data_here["min_data"]["dip_norm"]=data_min_norm.tolist()
-            data_here["max_data"]["dip_norm"]=data_max_norm.tolist()
+            data_here['boltzmann_averaged_data'][key] = data_averaged.tolist()
+            data_here['boltzmann_averaged_data'][key + '_std'] = data_std.tolist()
+            data_here['boltzmann_averaged_data']['dip_norm'] = data_averaged_norm.tolist()
+            data_here['boltzmann_averaged_data']['dip_norm_std'] = data_norm_std.tolist()
+            data_here['min_data']['dip_norm'] = data_min_norm.tolist()
+            data_here['max_data']['dip_norm'] = data_max_norm.tolist()
 
         # Else if it's a general electronic property
         else:
             logger.info('Reducing data for %s', key)
+
+            # Lists for holding the values and weights
             data = []
             weights_here = []
+
+            # Collect all the values
             for confidx, confname in enumerate(confnames):
 
                 # Get the value of the property for that particular conformer
@@ -701,16 +707,10 @@ def reduce_data(data_here: dict) -> tuple[dict, dict, dict]:
                 # If it is not None, add it to the data list
                 if x is not None:
                     data.append(x)
-                    # Get the weight of this particualr conformer and add it to the weights list
+                    # Get the weight of this particular conformer and add it to the weights list
                     weights_here.append(weights[confidx])
                 else:
-                    print(f'[WARNING] Missing electronic property {key} for confidx: {confidx} confname: {confname}')
-
-            #print('\n\n')
-            #print([len(q) for q in data])
-            #print(key, type(data), len(data))
-            #print(f'Data all same shape ({len(data[0])}): {all([len(q) == len(data[0]) for q in data])}')
-            #time.sleep(2)
+                    logger.warning('Missing electronic property %s for confidx: %d confname: %s', str(key), confidx, str(confname))
 
             if len(data) > 0:
                 #if debug:
@@ -736,7 +736,9 @@ def reduce_data(data_here: dict) -> tuple[dict, dict, dict]:
             # If there is no data, then the calculation or
             # parameter extraction failed for each conformer
             else:
-                print(f'\t[WARNING] min/max/boltz/stdev data for {key} can not be computed.')
+                logger.error('min/max/boltz/stdev properties for %s can not be computed because len(data) = %d', str(key), len(data))
+
+                # Add None values for those properties for which there is no data
                 data_here["boltzmann_averaged_data"][key] = None
                 data_here["boltzmann_averaged_data"][key + "_std"] = None
                 data_here["min_data"][key] = None
@@ -1139,7 +1141,7 @@ def get_num_bonds_P(smiles: str) -> int:
     for bond in P_atom.GetBonds():
 
         # Get the bond type
-        bondtype = bond.GetBondType()
+        bondtype = str(bond.GetBondType())
 
         if bondtype not in bond_values:
             raise ValueError(f'Unknown bondtype {str(bondtype)}')
