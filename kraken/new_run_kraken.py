@@ -27,14 +27,14 @@ import numpy as np
 #shutil.copy2(conf_prune_idx, Path.cwd() / conf_prune_idx.name)
 
 # Custom
-from kraken.geometry import get_Ni_CO_3, replace
+from kraken.geometry import get_Ni_CO_3, replace, perform_pdcl5_complexation_to_get_metal_complexation_geometry
 from kraken.semiempirical import run_crest, _get_crest_version
 from kraken.xtb import _get_xtb_version, xtb_opt
 from kraken.Kraken_Conformer_Selection_Only import conformer_selection_main
 from kraken.file_io import write_xyz
 from kraken.structure_generation import get_coords_from_smiles
-from kraken.utils import _str_is_smiles, get_num_bonds_P, add_Hs_to_P
-from kraken.utils import add_to_smiles, remove_complex, get_P_bond_indeces_of_ligand
+from kraken.utils import _str_is_smiles
+from kraken.utils import get_P_bond_indeces_of_ligand
 from kraken.utils import get_rotatable_bonds, reduce_data, combine_yaml
 from kraken.morfeus_properties import run_morfeus
 
@@ -163,74 +163,22 @@ def run_kraken_calculation(kraken_id: str,
         crest_calculation_dir.mkdir(exist_ok=True)
 
         # Structure generation
-        if generate_xyz and smiles is not None:
+        if generate_xyz and isinstance(smiles, str):           # if generate_xyz and (smiles is not None) and isinstance(smiles, str):
 
             # If we are requested to add Ni and Ni is not already in the smiles
-            if job == 'Ni' and metal_char not in smiles:
+            if job == 'Ni' and (metal_char not in smiles):
 
                 logger.info('Job requested was %s but %s was not in %s. Adding %s.', job, metal_char, smiles, metal_char)
 
-                num_bonds_P = get_num_bonds_P(smiles)
-
-                logger.debug('num_bonds_P of smiles %s: %d', smiles, num_bonds_P)
-
-                # Add the Hs to smiles phosphorus atom
-                smiles_Hs = add_Hs_to_P(smiles, num_bonds_P)
-
-                logger.debug('New formatted smiles is %s', smiles)
-
-                #print(smiles_Hs)
-                #smiles = utils.add_to_smiles(smiles,"[Pd@SP1]([Cl])([PH3])[Cl]")
-                #smiles = utils.add_to_smiles(smiles,"[Pd]([Cl])([PH3])[Cl]")
-                #spacer_smiles="[Pd]([As+](F)(F)F)([As+](F)(F)F)[As+](F)(F)F"
-                spacer_smiles="[Pd]([Cl])([Cl])([Cl])([Cl])[Cl]"
-
-                smiles_incl_spacer = add_to_smiles(smiles_Hs, spacer_smiles)
-
-                logger.debug('smiles_incl_space: %s', smiles_incl_spacer)
-
-                coords_ligand_complex, elements_ligand_complex = get_coords_from_smiles(smiles=smiles_incl_spacer,
-                                                                                        conversion_method=conversion_method)
-
-                # Get the number of atoms in the fake Pd(Cl)5 complex
-                num_atoms_with_fake_complex = len(coords_ligand_complex)
-
-                logger.debug('Number of atoms after adding fake complex: %d', num_atoms_with_fake_complex)
-
-                # Remove the complex and get the coordinates of just the ligand
-                coords_ligand, elements_ligand, done = remove_complex(coords=coords_ligand_complex,
-                                                                      elements=elements_ligand_complex,
-                                                                      smiles=smiles)
-
-                if not done:
-                    _dest = Path(mol_dir / f'{kraken_id}_failed_complex_in_generate_xyz.xyz')
-
-                    if (coords_ligand_complex is not None) and (elements_ligand_complex is not None):
-                        write_xyz(destination=_dest,
-                                    coords=coords_ligand_complex,
-                                    elements=elements_ligand_complex)
-
-                    raise ValueError(f'utils.remove_complex did not complete correctly. Saved file to {_dest.absolute()}')
-
-                # Get the number of atoms without the fake complex
-                num_atoms_without_fake_complex = len(coords_ligand)
-
-                logger.debug('Number of atoms of %s after removing the fake complex: %d', kraken_id, num_atoms_without_fake_complex)
-
-                # Compute the difference
-                difference = num_atoms_with_fake_complex - num_atoms_without_fake_complex
-
-                # Sanity check
-                if difference != 6:
-                    write_xyz(destination=Path(mol_dir / f'{kraken_id}_failed_complex_in_generate_xyz_atom_no_difference.xyz'),
-                              coords=coords_ligand_complex,
-                              elements=elements_ligand_complex,
-                              comment='Failed complex generation for Pd(Cl)5 complex',
-                              mask=[])
-
-                    raise ValueError(f'number of removed atoms is {difference}, but should be 6 for Pd(Cl)5. Saved file to {Path(moldir / f"{kraken_id}_failed_complex_in_generate_xyz_atom_no_difference.xyz").absolute()}')
+                # This will get us a geometry that should be able to accomodate Ni(CO)3
+                coords_ligand, elements_ligand = perform_pdcl5_complexation_to_get_metal_complexation_geometry(kraken_id=kraken_id,
+                                                                                                               smiles=smiles,
+                                                                                                               conversion_method=conversion_method,
+                                                                                                               mol_dir=mol_dir,
+                                                                                                               spacer_smiles='[Pd]([Cl])([Cl])([Cl])([Cl])[Cl]')
 
                 P_index, bond_indeces = get_P_bond_indeces_of_ligand(coords_ligand, elements_ligand)
+
                 if len(bond_indeces) != 3:
                     logger.warning('Number of P-bonds before adding complex was %d instead of 3 for SMILES %s', len(bond_indeces), smiles)
 

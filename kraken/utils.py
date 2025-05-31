@@ -293,7 +293,8 @@ def get_bonds(coords, elements, force_bonds=False, forced_bonds=[]):
                     b_to_add = [min([i, next_atom_idx]),max([i, next_atom_idx])]
                     elements_bond=[elements[b_to_add[0]],elements[b_to_add[1]]]
                     if elements_bond not in [["Cl","H"],["H","Cl"],["Cl","F"],["F","Cl"],["F","H"],["H","F"],["Pd","F"],["F","Pd"],["H","H"],["F","F"],["Cl","Cl"]]:
-                        print("WARNING: had to add a %s-%s bond that was not detected automatically."%(elements[b_to_add[0]],elements[b_to_add[1]]))
+                        logger.warning('Had to add a %s-%s bond that was not detected automatically.', elements[b_to_add[0]], elements[b_to_add[1]])
+
                         bonds.append(b_to_add)
                         break
                     else:
@@ -1220,7 +1221,7 @@ def add_Hs_to_P(smiles, num_bonds_P: int):
             add="[pH3]"
         else:
             add="[p]"
-            print(f'[WARNING] Weird number of bonds (num_bonds_P) for P in {smiles}')
+            logger.warning('Weird number of bonds (num_bonds_P) for P in %s. Found %s', smiles, str(num_bonds_P))
 
     else:
         exit(f'[FATAL] no P or p found in {smiles}')
@@ -1266,16 +1267,21 @@ def add_to_smiles(smiles, add):
 
 def remove_complex(coords: NDArray,
                    elements: NDArray,
-                   smiles: str):
+                   smiles: str,
+                   metal_char: str) -> tuple[NDArray, list] | tuple[None, None]:
+    '''
+    Returns the coordinate array (angstrom) and the list of elements (list[str])
+    '''
 
     # Get the index of the phosphorus atom
     P_index = list(elements).index("P")
 
     # Get ligand indices
-    mask, done = get_ligand_indices(coords, elements, P_index, smiles, "Pd")
+    mask, done = get_ligand_indices(coords, elements, P_index, smiles, metal_char=metal_char)
 
+    # Return None, None if get ligand indices fails
     if not done:
-        return(None, None, done)
+        return None, None
 
     # Make a list for holding
     coords_ligand=[]
@@ -1287,7 +1293,7 @@ def remove_complex(coords: NDArray,
         coords_ligand.append([atom[0],atom[1],atom[2]])
     coords_ligand=np.array(coords_ligand)
 
-    return coords_ligand, elements_ligand, True
+    return coords_ligand, elements_ligand
 
 def get_mass(elements: list[str]) -> float:
     '''
