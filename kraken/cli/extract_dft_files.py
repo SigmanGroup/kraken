@@ -26,7 +26,7 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-DESCRIPTION = '''
+DESCRIPTION = r'''
 ╔══════════════════════════════════════╗
 ║   | |/ / _ \  /_\ | |/ / __| \| |    ║
 ║   | ' <|   / / _ \| ' <| _|| .` |    ║

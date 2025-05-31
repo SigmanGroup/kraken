@@ -6,8 +6,8 @@
 # Date: 2025-04-10
 
 '''
-Simple script for submitting Kraken conformer searches to
-HPC systems
+Simple script for submitting Kraken conformer
+searches to HPC systems
 '''
 
 import re
@@ -45,8 +45,6 @@ DESCRIPTION = r"""
                      of orgaNophosphorus ligands.
 
                               CLI SCRIPT
-
-
 
               """
 
@@ -131,4 +129,5 @@ def main():
         subprocess.run(args=['sbatch', str(slurm_job_file.name)], cwd=slurm_job_file.parent, check=False)
 
 if __name__ == "__main__":
+    raise NotImplementedError('This script is unused')
     main()

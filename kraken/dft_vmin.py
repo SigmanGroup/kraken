@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# coding: utf-8
+# -*- coding: utf-8 -*-
 
 import os
 import re
@@ -57,25 +57,10 @@ npoints = [25,25,40]     # number of grid points in x,y,z directions
 # d_lp = 1.4/BOHR_TO_ANGSTROM  # distance of grid center from P
 # npoints = [25,25,25]     # number of grid points in x,y,z directions
 
-elements = {
-"1": "H",
-"5": "B",
-"6": "C",
-"7": "N",
-"8": "O",
-"9": "F",
-"14": "Si",
-"15": "P",
-"16": "S",
-"17": "Cl",
-"26": "Fe",
-"33": "As",
-"34": "Se",
-"35": "Br",
-"44": "Ru",
-"46": "Pd",
-"51": "Sb",
-"53": "I",
+# Renamed this to vmin_elements since "elements" is used frequently in the code
+vmin_elements = {"1": "H", "5": "B", "6": "C", "7": "N", "8": "O", "9": "F", "14": "Si",
+            "15": "P", "16": "S", "17": "Cl", "26": "Fe", "33": "As", "34": "Se",
+            "35": "Br", "44": "Ru", "46": "Pd", "51": "Sb", "53": "I",
 }
 
 class Vminob:
@@ -243,11 +228,11 @@ class Vminob:
             linesplit = re.findall(numbers_pattern,line)
             if len(linesplit) != 5:
                 break
-            if linesplit[0] not in elements.keys():
+            if linesplit[0] not in vmin_elements.keys():
                 print("Element not implemented in code: " + linesplit[0])
                 continue
             else:
-                self.coords.append([elements[linesplit[0]]]+[float(i) for i in linesplit[2:]])
+                self.coords.append([vmin_elements[linesplit[0]]]+[float(i) for i in linesplit[2:]])
         return
 
 def get_permission(filepath: str | Path) -> None:
@@ -546,7 +531,7 @@ def get_geom_fch(vminob: Vminob, file: Path):
     for line in range(atomnumbersstart+1,atomnumbersend):
         atomnos += content[line].split()
     for atom in atomnos:
-        if atom in elements:
+        if atom in vmin_elements:
             atoms.append(elements[atom]),
         else:
             atoms.append(atom)

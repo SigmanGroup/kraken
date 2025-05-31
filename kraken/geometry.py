@@ -2,8 +2,7 @@
 # coding: utf-8
 
 '''
-Holds geometry for certain complexes and does
-geometry manipulations
+Holds geometry for certain complexes and does geometry manipulations
 '''
 
 import os
@@ -20,7 +19,7 @@ from typing import Literal
 from numpy.typing import NDArray
 
 from rdkit import Chem, Geometry
-from rdkit.Chem import rdmolops, AllChem, rdMolAlign
+from rdkit.Chem import AllChem
 from rdkit.Geometry import Point3D
 from rdkit.Chem.rdchem import Mol
 from rdkit.Chem.rdForceFieldHelpers import UFFGetMoleculeForceField
@@ -381,6 +380,8 @@ def get_binding_geometry_of_ligand(smiles: str,
                                    coordination_distance: float = 2.1,
                                    nconfs=10) -> tuple[NDArray, list]:
     '''
+    THIS IS UNUSED, BUT COULD BE USED IN A FUTURE UPDATE
+
     Uses RDKit and MORFEUS to generate a set of coordinates and corresponding
     atomic symbols (coords, elements) for a monophosphine ligand that will
     better accomodate the Ni(CO)3 geometry. This is accomplished by generating
@@ -527,8 +528,7 @@ def perform_pdcl5_complexation_to_get_metal_complexation_geometry(kraken_id: str
     Then a spacer (originally [Pd]([Cl])([Cl])([Cl])([Cl])[Cl]) is added to
     the modified SMILES string wih add_to_smiles().
 
-
-    The coordinates of this new complex with the spaces is then generated with the
+    The coordinates of this new complex with the spacer is then generated with the
     get_coords_from_smiles function. The coordinates of the ligand from this
     Pd-bound complex are extracted with the remove_complex function. This
     gets us an initial geometry that should be compatible with the Ni(CO3) template.
@@ -538,18 +538,16 @@ def perform_pdcl5_complexation_to_get_metal_complexation_geometry(kraken_id: str
     However, it can fail occasionally. A sanity check is included to make sure that
     the number of atoms removed in the remove_complex function was truly 6 - the number
     of atoms in the spacer. This can fail if the complex coordinate generation produces
-    a geometry where one of the Cl atoms is placed too closely to an atom in the ligand.
+    a geometry where one of the Cl atoms is placed too closely to an atom in the ligand
+    causing the code to determine that the Cl atom is part of the ligand.
 
-    The Cl-C bond is interpreted as part of the ligand and the Cl atom is not removed. This
-    makes the sanity check fail.
+    The Cl-<ATOM> bond (where <ATOM> is an atom from the ligand)is interpreted as part
+    of the ligand and the Cl atom is not removed. This makes the sanity check fail.
 
     Example:
     COc1ccc(OC)c(P(c2cc(C(F)(F)F)cc(C(F)(F)F)c2)c2cc(C(F)(F)F)cc(C(F)(F)F)c2)c1-c1c(C(C)C)cc(C(C)C)cc1C(C)C
     COc1ccc(OC)c([P](c2cc(C(F)(F)F)cc(C(F)(F)F)c2)c2cc(C(F)(F)F)cc(C(F)(F)F)c2)c1-c1c(C(C)C)cc(C(C)C)cc1C(C)
     COc1ccc(OC)c([P]([Pd]([Cl])([Cl])([Cl])([Cl])[Cl])(c2cc(C(F)(F)F)cc(C(F)(F)F)c2)c2cc(C(F)(F)F)cc(C(F)(F)F)c2)c1-c1c(C(C)C)cc(C(C)C)cc1C(C)C
-
-    Return
-
     '''
 
     # Get the number of bonds to phosphorus

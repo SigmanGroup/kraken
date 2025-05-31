@@ -6,8 +6,7 @@
 # Date: 2025-04-10
 
 '''
-This script can be run directly to run
-the DFT portion of Kraken.
+This script can be run directly to run the DFT portion of Kraken.
 '''
 
 import re

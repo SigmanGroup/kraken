@@ -22,7 +22,7 @@ KRAKEN_CALC_FILE_EXTENSIONS = ['.com', '.gjf', '.log', '.chk', '.fchk', '.wfn', 
 
 logger = logging.getLogger(__name__)
 
-DESCRIPTION = '''
+DESCRIPTION = r'''
 ╔══════════════════════════════════════╗
 ║   | |/ / _ \  /_\ | |/ / __| \| |    ║
 ║   | ' <|   / / _ \| ' <| _|| .` |    ║

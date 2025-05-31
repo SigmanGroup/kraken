@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# coding: utf-8
+# -*- coding: utf-8 -*-
 
 '''
 Custom functions for reading and writing files
@@ -45,6 +45,8 @@ def read_xyz(file: Path) -> tuple[np.ndarray, list]:
     Reads a .xyz using custom xyz parsing and returns an array of
     cartesian coordinates and a list of corresponding elements.
 
+    You should probably just use morfeus.read_xyz
+
     Parameters
     ----------
     file: Path
@@ -75,20 +77,38 @@ def read_xyz(file: Path) -> tuple[np.ndarray, list]:
 
     return np.array(coords), elements
 
-def exportXYZ(filename: str | Path,
+def exportXYZ(file: str | Path,
               coords: np.ndarray,
               elements: list,
               mask=[]) -> Path:
     '''
-    Export an XYZ file to the destination.
+    Export an XYZ file containing atomic coordinates and element symbols.
 
-    Returns the filename variable.
+    Parameters
+    ----------
+    file: str | Path
+        Destination path for the XYZ file.
+
+    coords: np.ndarray
+        Array of shape (N, 3) with atomic coordinates, where N is the number of atoms.
+
+    elements: list
+        List of length N containing element symbols (strings) corresponding to each coordinate.
+
+    mask: list, optional
+        List of integer indices specifying which atoms to include. If empty, all atoms are written.
+        Defaults to [].
+
+    Returns
+    -------
+    path: Path
+        The Path object corresponding to the written XYZ file.
     '''
 
     if len(coords) != len(elements):
         raise ValueError(f'Number of coords {len(coords)} does not match number of elements {len(elements)}')
 
-    with open(filename, "w", encoding='utf-8') as outfile:
+    with open(file, "w", encoding='utf-8') as outfile:
 
         # If no mask is provided, write out everything
         if len(mask)==0:
@@ -103,7 +123,8 @@ def exportXYZ(filename: str | Path,
             for atomidx in mask:
                 atom = coords[atomidx]
                 outfile.write("%s %f %f %f\n"%(elements[atomidx].capitalize(),atom[0],atom[1],atom[2]))
-    return filename
+
+    return Path(file)
 
 def write_xyz(destination: str | Path,
               coords: NDArray,
@@ -161,7 +182,6 @@ def write_xyz(destination: str | Path,
                 outfile.write(f'{element:<3}  {crd[0]:12.6f}  {crd[1]:12.6f}  {crd[2]:12.6f}\n')
 
     return Path(destination)
-
 
 def log_to_xyz(file: Path) -> Path:
     '''
@@ -275,12 +295,3 @@ def get_outstreams(file: Path) -> list[str] | str:
         streams.append(''.join([line.strip() for line in lines[line_start_idx:line_end_index+1]]).split('\\'))
 
     return streams
-
-if __name__ == "__main__":
-    file = Path('/uufs/chpc.utah.edu/common/home/u6053008/kraken_dft/new_kraken_dft/90000001/dft/90000001_noNi_00000/90000001_noNi_00000.log')
-
-    streams = get_outstreams(file)
-    old_streams = get_outstreams_old(filename=file)
-    print(old_streams[0] == streams[0])
-
-   # print(streams)

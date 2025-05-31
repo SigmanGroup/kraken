@@ -1,30 +1,19 @@
 #!/usr/bin/env python3
-# coding: utf-8
+# -*- coding: utf-8 -*-
 
 '''
 Code for running Kraken conformer searches
-
-#TODO INCLUDE ORIGINAL AUTHORS OF CODE
-
-Major revisions March 2024:
-    James Howard, PhD
 '''
 
 # stdlib
-import os
-import sys
 import time
 import shutil
 import logging
 
 from pathlib import Path
 
-# Dependencies
 import yaml
 import numpy as np
-
-#conf_prune_idx = Path(__file__).parent / 'ConfPruneIdx.pyx'
-#shutil.copy2(conf_prune_idx, Path.cwd() / conf_prune_idx.name)
 
 # Custom
 from kraken.geometry import get_Ni_CO_3, replace, perform_pdcl5_complexation_to_get_metal_complexation_geometry
@@ -256,9 +245,6 @@ def run_kraken_calculation(kraken_id: str,
                                                                                                                                                            add_Pd_Cl2=add_Pd_Cl2,
                                                                                                                                                            add_Pd_Cl2_PH3=add_Pd_Cl2_PH3,
                                                                                                                                                            add_Ni_CO_3=add_Ni_CO_3)
-
-        # Electronic properties wils, alphas, fukui are making it here in testing
-        # The missing keys must be a result of something else
 
         if not crest_done:
             raise ValueError(f'CREST did not terminate normally for {xyz_file_path.name} on job {job}.')

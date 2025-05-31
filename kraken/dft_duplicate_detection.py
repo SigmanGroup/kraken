@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 import numpy as np
 
@@ -6,14 +8,19 @@ import itertools
 from pathlib import Path
 
 from rdkit import Chem,Geometry
-from rdkit.Chem import rdmolfiles, AllChem, rdMolAlign, rdmolops
+from rdkit.Chem import rdMolAlign, rdmolops
 
 def dict_key_rmsd(candidate_pair):
     return float(rmsd_matrix(candidate_pair)[0, 1])
 
 def delete_haloalkane_halides(mol):
-    """Remove halides in perhaloalkyl moieties. Match CX2 where both X are the same halide and there is no H at the same carbon, and delete both X from the molecule object."""
-    halides = ["F","Cl","Br","I"]
+    """
+    Remove halides in perhaloalkyl moieties. Match CX2 where both
+    X are the same halide and there is no H at the same carbon,
+    and delete both X from the molecule object.
+    """
+    halides = ["F", "Cl", "Br", "I"]
+
     matches = ()
     for hal in halides:  # this is to avoid matching mixed halides
         matches += mol.GetSubstructMatches(Chem.MolFromSmarts(f"{hal}[CH0]({hal})")) # matches CX3 and --CX2-- . In --CF2Cl, this would match CF2 only, keeping Cl
@@ -29,7 +36,11 @@ def delete_haloalkane_halides(mol):
     return(new_mol)
 
 def mirror_mol(mol0):
-    """Create mirror image of the 3D structure in an RDKit molecule object (assumes that one structure/conformer is present in the object)."""
+    """
+    Create mirror image of the 3D structure in an RDKit molecule
+    object (assumes that one structure/conformer is present in
+    the object).
+    """
     # Iris Guo
     mol1 = Chem.RWMol(mol0)
     conf1 = mol1.GetConformers()[0]    # assumption: 1 conformer per mol
@@ -75,6 +86,3 @@ def get_rmsd_matrix(conformers: list[Path]):
                 rmsd_mat[j, i] = rmsd_mat[i, j]
 
         return rmsd_mat
-
-def find_dupes():
-    pass
