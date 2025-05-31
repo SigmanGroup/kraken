@@ -2,13 +2,18 @@
 # coding: utf-8
 
 '''
-Holds geometry for certain complexes
+Holds geometry for certain complexes and does
+geometry manipulations
 '''
 
 import os
+import logging
+import tempfile
 import numpy as np
 import scipy.spatial as scsp
 import scipy.linalg as scli
+
+from pathlib import Path
 
 from typing import Literal
 
@@ -16,7 +21,18 @@ from numpy.typing import NDArray
 
 from rdkit import Chem, Geometry
 from rdkit.Chem import rdmolops, AllChem, rdMolAlign
+from rdkit.Geometry import Point3D
 from rdkit.Chem.rdchem import Mol
+from rdkit.Chem.rdForceFieldHelpers import UFFGetMoleculeForceField
+
+from morfeus import BuriedVolume, read_xyz
+
+from kraken.utils import get_num_bonds_P, add_Hs_to_P
+from kraken.utils import add_to_smiles, remove_complex
+from kraken.structure_generation import get_coords_from_smiles
+from kraken.file_io import write_xyz
+
+logger = logging.getLogger(__name__)
 
 def get_Ni_CO_3() -> tuple[NDArray, list[str], Literal[0], Literal[1]]:
     '''
@@ -307,4 +323,285 @@ def mirror_mol(mol: Mol):
 
     return mol
 
+def get_lower_energy_conformer(mol: Chem.Mol,
+                               nconfs: int = 50) -> Chem.Mol:
+    '''
+    Runs a quick RDKit conformer search, optimizes them, then evaluates
+    the energy of them to produce a lower energy conformation of the molecule.
+
+    Parameters
+    ----------
+    mol: Chem.Mol
+        The input molecule.
+
+    nconfs : int, optional, default=50
+        Number of conformers to generate.
+
+    Returns
+    ----------
+    Chem.Mol
+        The molecule with the lowest energy conformation.
+    '''
+    # Set the conf search parameters
+    params = AllChem.ETKDGv3()
+
+    # Use all available threads
+    params.numThreads = 0
+
+    # Prune similar conformers
+    params.pruneRmsThresh = 0.5
+
+    conf_ids = AllChem.EmbedMultipleConfs(mol, numConfs=nconfs, params=params)
+
+    min_energy = float('inf')
+    min_conf_id = None
+
+    for conf_id in conf_ids:
+        ff = UFFGetMoleculeForceField(mol, confId=conf_id)
+        ff.Minimize()
+        energy = ff.CalcEnergy()
+
+        if energy < min_energy:
+            min_energy = energy
+            min_conf_id = conf_id
+
+    if min_conf_id is not None:
+
+        # Extract the lowest-energy conformer before modifying the molecule
+        low_energy_conf = mol.GetConformer(min_conf_id)
+
+        # Create a copy to prevent modifying the original
+        mol = Chem.Mol(mol)
+        mol.RemoveAllConformers()
+        mol.AddConformer(low_energy_conf, assignId=True)
+
+    return mol
+
+def get_binding_geometry_of_ligand(smiles: str,
+                                   coordination_distance: float = 2.1,
+                                   nconfs=10) -> tuple[NDArray, list]:
+    '''
+    Uses RDKit and MORFEUS to generate a set of coordinates and corresponding
+    atomic symbols (coords, elements) for a monophosphine ligand that will
+    better accomodate the Ni(CO)3 geometry. This is accomplished by generating
+    a series of conformations using RDKit and testing the BuriedVolume at some
+    distance away from the phosphorus atom.
+
+    Using this metric, the lowest Vbur conformation is selected.
+
+    Parameters
+    ----------
+    smiles: str
+        SMILES string for the monophosphine
+
+    coordination_distance: float (default=1.8)
+        Distance from the phosphorus to the dummy metal atom
+
+    Returns
+    -------
+    coords, elements
+    '''
+    pass
+
+    # Parse the SMILES string into an RDKit molecule object
+    mol = Chem.MolFromSmiles(smiles)
+
+    # Add explicit hydrogen atoms
+    mol = Chem.AddHs(mol)
+
+    # Generate 3D coordinates via distance geometry
+    AllChem.EmbedMolecule(mol)
+
+    # Get a lower energy conformer
+    mol = get_lower_energy_conformer(mol=mol, nconfs=5)
+
+    # Set the conf search parameters
+    params = AllChem.ETKDGv3()
+
+    # Use all available threads
+    params.numThreads = 0
+
+    # Prune similar conformers
+    params.pruneRmsThresh = 0.5
+
+    conf_ids = AllChem.EmbedMultipleConfs(mol, numConfs=nconfs, params=params)
+
+    # Get the indices of the atoms bound to phosphorus
+    p_atom = [x for x in mol.GetAtoms() if x.GetSymbol() == 'P']
+    if len(p_atom) != 1:
+        raise ValueError(f'Could not locate P atom in {smiles}')
+    p_atom = p_atom[0]
+
+    # Get the bonds to phosphorus
+    p_bonds = [x for x in mol.GetBonds() if p_atom.GetIdx() in (x.GetBeginAtom().GetIdx(), x.GetEndAtom().GetIdx())]
+
+    # Get the atoms bound directly to phosphorus
+    bound_atoms = [[bond.GetBeginAtom(), bond.GetEndAtom()] for bond in p_bonds]
+
+    # Flatten the list of lists (by removing the P atom itself since it's included in the bond)
+    bound_atoms = [x for xs in bound_atoms for x in xs if x.GetSymbol() != 'P']
+
+    # Storing the progress here
+    min_vbur = float('inf')
+    min_conf_id = None
+
+    # Iterate through the conformers
+    for conf_id in conf_ids:
+
+        ff = UFFGetMoleculeForceField(mol, confId=conf_id)
+        ff.Minimize()
+        energy = ff.CalcEnergy()
+
+        # Get the array of positions
+        positions = np.array([mol.GetConformer(id=conf_id).GetAtomPosition(x.GetIdx()) for x in bound_atoms])
+
+        # Compute the geometric centroid of the substituents
+        centroid = np.mean(positions, axis=0)
+
+        # Get the vector that points from centroid to phosphorus
+        direction = mol.GetConformer(id=conf_id).GetAtomPosition(p_atom.GetIdx()) - centroid
+        direction_unit_vector = direction / np.linalg.norm(direction)
+
+        # Make"metal" position by adding the direction vector to the phosphorus atom pos
+        metal_pos = (coordination_distance * direction_unit_vector) + mol.GetConformer(id=conf_id).GetAtomPosition(p_atom.GetIdx())
+
+        # Make a writable mol
+        rw_mol = Chem.RWMol(mol, confId=conf_id)
+        conf = rw_mol.GetConformer()
+
+        # Add an atom
+        new_idx = rw_mol.AddAtom(Chem.Atom(2))
+        conf.SetAtomPosition(new_idx, Point3D(*metal_pos))
+
+        _mol = rw_mol.GetMol()
+
+        #with open('tmp.xyz', 'a') as o:
+        #    o.write(Chem.MolToXYZBlock(_mol))
+
+        with tempfile.NamedTemporaryFile('w+', suffix='.xyz', delete=True) as f:
+            f.write(Chem.MolToXYZBlock(mol=_mol))
+            f.flush()
+            elements, coordinates = read_xyz(f.name)
+
+        # Compute the vbur
+        bv = BuriedVolume(elements=elements,
+                          coordinates=coordinates,
+                          radius=5,
+                          metal_index=new_idx + 1,) # Have to add one because MORFEUS uses 1-indexing
+
+        bv = bv.fraction_buried_volume
+
+        if bv < min_vbur:
+            logger.info('Found new lower Vbur conformer when constructing geometry %.3f', bv)
+            min_vbur = bv
+            min_conf_id = conf_id
+
+    # Pick the winning conformations
+    final_conformation = mol.GetConformer(min_conf_id)
+
+    # Create a copy to prevent modifying the original
+    new_mol = Chem.Mol(mol)
+    new_mol.RemoveAllConformers()
+    new_mol.AddConformer(final_conformation, assignId=True)
+
+    with tempfile.NamedTemporaryFile('w+', suffix='.xyz', delete=True) as f:
+            f.write(Chem.MolToXYZBlock(mol=new_mol))
+            f.flush()
+            elements, coordinates = read_xyz(f.name)
+
+    return coordinates, elements
+
+
+def perform_pdcl5_complexation_to_get_metal_complexation_geometry(kraken_id: str,
+                                                                  smiles: str,
+                                                                  conversion_method: str,
+                                                                  mol_dir: Path,
+                                                                  spacer_smiles: str = '[Pd]([Cl])([Cl])([Cl])([Cl])[Cl]',
+                                                                  ) -> tuple[NDArray, list]:
+    '''
+    In the original Kraken workflow for conformer generation, the SMILES
+    string analyzed to determine the number of bonds to phosphorus and then
+    replace the phosphorus atom in the smiles to contain hydrogens (if there are
+    fewer than 3 bonds to phosphorus).
+
+    Then a spacer (originally [Pd]([Cl])([Cl])([Cl])([Cl])[Cl]) is added to
+    the modified SMILES string wih add_to_smiles().
+
+
+    The coordinates of this new complex with the spaces is then generated with the
+    get_coords_from_smiles function. The coordinates of the ligand from this
+    Pd-bound complex are extracted with the remove_complex function. This
+    gets us an initial geometry that should be compatible with the Ni(CO3) template.
+
+    i.e., this function will get a geometry that allows Ni(CO)3 to fit!
+
+    However, it can fail occasionally. A sanity check is included to make sure that
+    the number of atoms removed in the remove_complex function was truly 6 - the number
+    of atoms in the spacer. This can fail if the complex coordinate generation produces
+    a geometry where one of the Cl atoms is placed too closely to an atom in the ligand.
+
+    The Cl-C bond is interpreted as part of the ligand and the Cl atom is not removed. This
+    makes the sanity check fail.
+
+    Example:
+    COc1ccc(OC)c(P(c2cc(C(F)(F)F)cc(C(F)(F)F)c2)c2cc(C(F)(F)F)cc(C(F)(F)F)c2)c1-c1c(C(C)C)cc(C(C)C)cc1C(C)C
+    COc1ccc(OC)c([P](c2cc(C(F)(F)F)cc(C(F)(F)F)c2)c2cc(C(F)(F)F)cc(C(F)(F)F)c2)c1-c1c(C(C)C)cc(C(C)C)cc1C(C)
+    COc1ccc(OC)c([P]([Pd]([Cl])([Cl])([Cl])([Cl])[Cl])(c2cc(C(F)(F)F)cc(C(F)(F)F)c2)c2cc(C(F)(F)F)cc(C(F)(F)F)c2)c1-c1c(C(C)C)cc(C(C)C)cc1C(C)C
+
+    Return
+
+    '''
+
+    # Get the number of bonds to phosphorus
+    num_bonds_P = get_num_bonds_P(smiles)
+
+    logger.debug('num_bonds_P of smiles %s: %d', smiles, num_bonds_P)
+
+    # Add the Hs to smiles phosphorus atom
+    # This just adds square brackets if there are 3-bonds to phosphorus
+    smiles_Hs = add_Hs_to_P(smiles, num_bonds_P)
+
+    logger.debug('New formatted smiles is %s', smiles_Hs)
+
+    smiles_incl_spacer = add_to_smiles(smiles_Hs, spacer_smiles)
+
+    logger.debug('smiles_incl_space: %s', smiles_incl_spacer)
+
+    coords_ligand_complex, elements_ligand_complex = get_coords_from_smiles(smiles=smiles_incl_spacer,
+                                                                            conversion_method=conversion_method)
+
+    # Get the number of atoms in the fake Pd(Cl)5 complex
+    num_atoms_with_fake_complex = len(coords_ligand_complex)
+
+    logger.debug('Number of atoms after adding fake complex: %d', num_atoms_with_fake_complex)
+
+    # Remove the complex and get the coordinates of just the ligand (why)
+    coords_ligand, elements_ligand = remove_complex(coords=coords_ligand_complex,
+                                                    elements=elements_ligand_complex,
+                                                    smiles=smiles,
+                                                    metal_char='Pd')
+
+    if coords_ligand is None or elements_ligand is None:
+        raise ValueError(f'Removal of complex from smiles {smiles} failed to generate coordinates')
+
+    # Get the number of atoms without the fake complex
+    num_atoms_without_fake_complex = len(coords_ligand)
+
+    logger.debug('Number of atoms of %s after removing the fake complex: %d', kraken_id, num_atoms_without_fake_complex)
+
+    # Compute the difference
+    difference = num_atoms_with_fake_complex - num_atoms_without_fake_complex
+
+    # Sanity check
+    if difference != 6:
+        write_xyz(destination=Path(mol_dir / f'{kraken_id}_failed_complex_in_generate_xyz_atom_no_difference.xyz'),
+                    coords=coords_ligand_complex,
+                    elements=elements_ligand_complex,
+                    comment='Failed complex generation for Pd(Cl)5 complex',
+                    mask=[])
+        logger.critical('Failure in making templation complex. This could be from incomplete geometry generation from RDKit/Obabel')
+        logger.critical('Try rerunning with a different conversion method, or the same one and hoping to get lucky.')
+        raise ValueError(f'number of removed atoms is {difference}, but should be 6 for Pd(Cl)5. Saved file to {Path(mol_dir / f"{kraken_id}_failed_complex_in_generate_xyz_atom_no_difference.xyz").absolute()}')
+
+    return coords_ligand, elements_ligand
 
