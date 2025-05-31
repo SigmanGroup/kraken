@@ -49,11 +49,13 @@ def smiles_to_image(smiles: str, size: tuple = (150, 150), render_size: tuple = 
 
     Parameters
     ----------
-    smiles:str
+    smiles: str
         The SMILES string of the molecule.
-    size:tuple
+
+    size: tuple
         Display size in points (width, height) for ReportLab.
-    render_size:tuple
+
+    render_size: tuple
         Pixel size (width, height) to render the image at (controls resolution).
 
     Returns
@@ -82,17 +84,19 @@ def mol_from_elements_coords_connectivity(elements: list[str],
 
     Parameters
     ----------
-    elements:list of str
-        Atomic symbols (e.g., ['C', 'O', 'H']).
-    coords:list of tuple[float, float, float] or np.ndarray
-        Atomic coordinates.
+    elements: list of str
+        Atomic symbols
+
+    coords: list of tuple[float, float, float] or np.ndarray
+        Atomic coordinates (angstrom)
+
     connectivity:np.ndarray
         Symmetric 0/1 matrix indicating bonded atom pairs.
 
     Returns
     -------
     Mol
-        A sanitized RDKit Mol object with inferred bond orders.
+        RDKit Mol object with inferred bond orders.
     '''
     if isinstance(coords, list):
         coords = np.array(coords)
@@ -122,9 +126,8 @@ def mol_from_elements_coords_connectivity(elements: list[str],
 def validate_keys(new: dict,
                   old: dict):
     '''
-    Tests if the first layer of keys are
-    in each dictionary and tests if the
-    type is correct
+    Tests if the first layer of keys are in each dictionary and tests
+    if the type is correct.
     '''
 
     new_keys = list(new.keys())
@@ -161,9 +164,10 @@ def float_validation(new_float: float, old_float: float) -> pd.Series:
 
     Parameters
     ----------
-    new_float : float
+    new_float: float
         New computed value
-    old_float : float
+
+    old_float: float
         Reference value to compare against
 
     Returns
@@ -192,8 +196,9 @@ def create_pdf(filename: str, elements: List[Flowable]) -> None:
 
     Parameters
     ----------
-    filename:str
+    filename: str
         The output PDF file path.
+
     elements:list of Flowable
         A list of ReportLab flowables (e.g., tables, paragraphs) to include in the PDF.
     '''
@@ -214,9 +219,9 @@ def add_table(df: pd.DataFrame, max_width: int = int(6.0*72)) -> Table:
 
     Parameters
     ----------
-    df:pd.DataFrame
+    df: pd.DataFrame
         The DataFrame to convert.
-    max_width:int
+    max_width: int
         Maximum total table width in points (default: 6 inches).
 
     Returns
@@ -271,14 +276,19 @@ def plot_xy_with_fit(x: list[float],
     ----------
     x: list[float]
         X-axis data.
+
     y: list[float]
         Y-axis data.
+
     xlabel: str
         Label for the x-axis.
+
     ylabel: str
         Label for the y-axis.
+
     title: str
         Title of the plot.
+
     save: Path | None
         File path to save the figure. If None, the figure is returned as a ReportLab Image.
 
@@ -499,9 +509,6 @@ def main():
 
 
     create_pdf('./validation/validation_report.pdf', doc_elements)
-
-
-
 
 if __name__ == "__main__":
     main()

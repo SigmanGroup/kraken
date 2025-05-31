@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# coding: utf-8
+# -*- coding: utf-8 -*-
 
 from pathlib import Path
 
@@ -7,6 +7,7 @@ import numpy as np
 
 from .dft_utils import HARTREE_TO_KCAL
 
+#TODO the Pint code needs to be rewritten. It's very unclear what each item does
 class pint_pdb:
     def __init__(self,
                  xyz: Path,

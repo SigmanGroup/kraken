@@ -39,7 +39,7 @@ def _get_crest_version() -> str | None:
     version = proc.stdout.decode('utf-8')
     version = re.findall(VERSION_PATTERN, version)
     if len(version) == 0:
-        print('[WARNING] CREST is callable, but the version could not be checked.')
+        logger.warning('CREST is callable, but the version could not be checked')
         return None
     return str(version[0]).lower()
 
@@ -62,7 +62,7 @@ def call_crest(file: Path,
     # crest -chrg %i is used for charges
 
     if debug:
-        print(f'[DEBUG] In call_crest: Running {command}')
+        logger.debug('in call_crest: running %s', str(command))
 
     args = shlex.split(command)
 

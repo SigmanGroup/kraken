@@ -62,7 +62,7 @@ def get_filecont(file: Path) -> list[str]:
 
     Parameters
     ----------
-    file : Path
+    file: Path
         Path to the file to be read.
 
     Returns
@@ -83,11 +83,11 @@ def get_filecont(file: Path) -> list[str]:
 
     # Check for "Normal termination" in the last 10 lines
     for line in filecont[-10:]:
-        if "Normal termination" in line:
+        if 'Normal termination' in line:
             return filecont
 
     # Return failure notice if no successful termination found
-    return ["failed or incomplete job"]
+    return ['failed or incomplete job']
 
 def make_fchk_file(file: Path,
                    dest: Path) -> Path:
@@ -137,7 +137,7 @@ def get_coordinates_and_elements_from_logfile(file: Path) -> tuple[np.ndarray, n
 
     Parameters
     ----------
-    file : Path
+    file: Path
         Path to the Gaussian .log file.
 
     Returns
@@ -248,6 +248,11 @@ def get_conmat(elements: np.ndarray, coords: np.ndarray) -> np.ndarray:
     return conmat
 
 def split_log(file: Path) -> list[Path]:
+    '''
+    This splits a G16 logfile into its separate calculations.
+    I haven't tested it thoroughly, so incomplete jobs may
+    cause Kraken to crash.
+    '''
 
     logger.info('Splitting log %s', file.name)
 

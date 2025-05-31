@@ -1,14 +1,12 @@
 # Kraken
-In 2024, the code for the Kraken workflow was significantly refactored to streamline the addition of new ligands and improve portability.
-This update enables the use of modern software versions including xtb v6.4.0 and crest v2.12 in addition to the original versions of these
-programs used to build Kraken (xtb v6.2.2 and crest v2.8). The provided environment is capable of running both versions simply by calling
-the desired program version through a subprocess. In our testing, the new workflow performs similarly to the original workflow with several
-exceptions depending on the program versions used.
+In 2024, the code for the Kraken workflow was refactored to streamline the addition of new ligands and improve portability.
+This update uses modern software versions including xtb v6.4.0 and crest v2.12. In our testing, the new workflow performs
+similarly to the original workflow with several exceptions depending on the program versions used.
 
-There are some significant differences between xTB versions that lead to different properties at the xTB-GFN2 level. However, we have compared
-the DFT properties of over 60 monophosphines to the original Kraken results. For a single monophosphine, the differences between the old and
-new properties may exceed 75% of the original value (mostly quadrant/octant volumes). However, these differences likely result from either
-incomplete conformer searches in the original dataset or the stochastic nature of conformer searches.
+There are some differences between xTB versions that lead to different properties at the xTB-GFN2 level. However, we have
+compared the DFT properties of over 60 monophosphines to the original Kraken results. For a single monophosphine, the
+differences between the old and new properties may exceed 75% of the original value (mostly quadrant/octant volumes).
+However, these differences likely result from the stochastic nature of conformer searches.
 
 __A detailed report comparing 28 monophosphines from the original Kraken workflow is provided in the validation folder__
 ## Installation (Linux systems only)
@@ -37,8 +35,10 @@ conda activate kraken
 pip install .
 ```
 ## Example Usage (submission to CHPC for the Sigman group)
-These instructions are for Sigman group members to submit batches of calculations to the Sigman owner nodes on Notchpeak. For other users outside of the Sigman group, please
-see (and modify) the SLURM templates in the `kraken/slurm_templates` directory to accommodate your job scheduler __before installation__. Please note that special symbols exist in the SLURM templates that are substituted with actual values required by SLURM including `$KID`, `$NPROCS`, `$MEM`, and several others.
+These instructions are for Sigman group members to submit batches of calculations to the Sigman owner nodes on Notchpeak. For other
+users outside of the Sigman group, please see (and modify) the SLURM templates in the `kraken/slurm_templates` directory to
+accommodate your job scheduler __before installation__. Please note that special symbols exist in the SLURM templates that
+are substituted with actual values required by SLURM including `$KID`, `$NPROCS`, `$MEM`, and several others.
 
 1. Format a `.csv` file that contains your monophosphine SMILES string, kraken id, and conversion flag:
 
@@ -155,7 +155,6 @@ run_kraken_dft.py --kid 90000001 --dir ./data/ --nprocs 4 --force > kraken_dft_p
 │   ├── 90000001_noNi_00009
 │   ├── confselection_minmax_Ni.txt
 │   ├── confselection_minmax_noNi.txt
-│   ├── fort.7
 │   ├── rmsdmatrix.csv
 │   └── selected_conformers
 └── xtb_scr_dir
@@ -224,8 +223,8 @@ Eike Caldeweyher, Jan-Michael Mewes, Sebastian Ehlert, Stefan Grimme. <br>
 2.  Crest v2.12 produces many more conformers than crest v2.8. Because conformers for DFT calculations are selected based on properties, the number of conformers for DFT calculations should remain unchanged.
 
 ## Comparison between old and new workflows
-The code for this updated workflow was adapted from the original Kraken code. Some aspects have been altered for ease of use like automating .fchk generation. Updates to the
-code should be done carefully so as to not impact the final descriptors produced at the end of the workflow. We have included a comparison between the descriptors from the
+The code for this updated workflow was adapted from the original Kraken code. Some aspects have been altered for ease of use like automating .fchk generation.
+Updates to the code should be done carefully so as to not impact the final descriptors. We have included a comparison between the descriptors from the
 original Kraken publications and the new workflow for approximately 30 monophosphines in the validation/ folder.
 
 ## Including new templates for submission to HPC clusters
@@ -241,8 +240,9 @@ $CALCDIR - Calculation directory for the job <br>
 $SMILES - Placeholder for the SMILES string of the monophosphines (only required for conf search portion) <br>
 $CONVERSION_FLAG - Flag for method for generating coordinates from SMILES (default should be 4, only for conf search portion) <br>
 
-Once you have created the new `.slurm` template, place it in the `/kraken/slurm_templates/` directory. You can then modify the `SLURM_TEMPLATE` variable in both  `/kraken/cli/example_conf_search_submission_script.py` and `/kraken/cli/example_dft_submission_script.py` submission scripts to point to your new `.slurm` file. Finally, install the Kraken package
-using the instructions above. Your new `.slurm` file will be used instead of the one provided in the repository.
+Once you have created the new `.slurm` template, place it in the `/kraken/slurm_templates/` directory. You can then modify the `SLURM_TEMPLATE` variable in both
+`/kraken/cli/example_conf_search_submission_script.py` and `/kraken/cli/example_dft_submission_script.py` submission scripts to point to your new `.slurm` file.
+Finally, install the Kraken package using the instructions above. Your new `.slurm` file will be used instead of the one provided in the repository.
 
 ## TO-DO
 1. Refactor SLURM_TEMPLATE usage in the submission scripts to allow users to change the way Kraken CLI scripts interact with HPC job schedulers.
