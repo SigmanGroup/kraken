@@ -67,16 +67,11 @@ def call_crest(file: Path,
     args = shlex.split(command)
 
     # Run the crest command
-    with open(file.parent / 'crest.log', 'a') as crest_log_file:
+    with open(file.parent / 'crest.log', 'a', encoding='utf-8') as crest_log_file:
         proc = subprocess.run(args, stdout=crest_log_file, stderr=subprocess.PIPE, cwd=file.parent)
-        stderr = proc.stderr.decode('utf-8')
+        logger.debug('stderr in call_crest\n %s', str(proc.stderr.decode('utf-8')))
 
-        logger.debug('stderr in call_crest. Return code %d', proc.returncode)
-        logger.debug('-'*80)
-        logger.debug(stderr)
-        logger.debug('-'*80)
-
-    # Sleep for some god damned reason
+    # This sleep was here at one point, but I don't think we need it
     #time.sleep(5)
 
     # Remove files if requested

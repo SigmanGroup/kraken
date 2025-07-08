@@ -304,7 +304,7 @@ def get_vmin(fchk: Path,
     runcub should be True in the read_conformer script
     '''
 
-    # Don't know what this shit was supposed to do
+    # Don't know what this was supposed to do
     if "_Pesp_out" in fchk.name:
         name =  fchk.name.split("_Pesp_out.")[0]
         ext = fchk.name.split("_Pesp_out.")[1]
