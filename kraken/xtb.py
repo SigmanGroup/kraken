@@ -64,7 +64,6 @@ def call_xtb(file: Path,
     None
     '''
     # Format the command
-    command = f'xtb --gbsa toluene --lmo --vfukui --esp --chrg 0 {file.name}'
     cmd = ['xtb']
 
     # Add keywords

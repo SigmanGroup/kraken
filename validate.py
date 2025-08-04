@@ -212,7 +212,6 @@ def create_pdf(filename: str, elements: List[Flowable]) -> None:
 
     doc.build(elements)
 
-
 def add_table(df: pd.DataFrame, max_width: int = int(6.0*72)) -> Table:
     '''
     Convert a pandas DataFrame into a styled ReportLab Table object.

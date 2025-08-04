@@ -46,6 +46,7 @@ def _get_crest_version() -> str | None:
 def call_crest(file: Path,
                nprocs: int,
                reduce_output: bool,
+               charge: int = 0,
                debug: bool = False,
                noreftopo: bool = False,
                nocross: bool = False
