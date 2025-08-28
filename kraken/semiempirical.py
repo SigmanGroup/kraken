@@ -52,10 +52,10 @@ def call_crest(file: Path,
                nocross: bool = False
                ) -> None:
     '''
-    Executes the CREST command
+    Executes the CREST commands for Kraken
     '''
 
-    command=f'crest {file.absolute()} --gbsa toluene -metac -nozs -T {nprocs}' # -mquick --gfnff
+    command=f'crest {file.absolute()} --gbsa toluene -metac -nozs -T {nprocs} --chrg {charge}' # -mquick --gfnff
 
     # These are old crest commands?
     #command="crest %s --gbsa toluene -metac"%(filename)
@@ -95,6 +95,7 @@ def run_crest(file: Path,
               nprocs: int,
               reduce_output: bool,
               smiles: str,
+              charge: int,
               metal_char: str,
               add_Pd_Cl2: bool,
               add_Pd_Cl2_PH3: bool,
@@ -127,7 +128,8 @@ def run_crest(file: Path,
     if not crest_complete:
         call_crest(file=file,
                    nprocs=nprocs,
-                   reduce_output=reduce_output)
+                   reduce_output=reduce_output,
+                   charge=charge)
     else:
         logger.info('Found existing CREST calculation at %s. Reading output.', CREST_LOG_FILE.absolute())
 
@@ -235,7 +237,7 @@ def run_crest(file: Path,
                                                 vomega=False,
                                                 vipea=False,
                                                 output_file=xtb_lmo_log_file,
-                                                charge=0,
+                                                charge=charge,
                                                 reduce_output=True,
                                                 gbsa='toluene',
                                                 nprocs=nprocs)
@@ -259,7 +261,7 @@ def run_crest(file: Path,
                                                   vomega=True,
                                                   vipea=True,
                                                   output_file=xtb_vipea_log_file,
-                                                  charge=0,
+                                                  charge=charge,
                                                   reduce_output=True,
                                                   gbsa='toluene',
                                                   nprocs=nprocs)

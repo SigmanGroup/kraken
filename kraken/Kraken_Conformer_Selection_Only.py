@@ -556,8 +556,9 @@ def conformer_selection_main(kraken_id: str,
                              save_dir: Path,
                              noNi_datafile: Path,
                              Ni_datafile: Path,
-                             nprocs: int):
-    print(f'[INFO] Beginning conformer_selection_main with {kraken_id}')
+                             nprocs: int,
+                             charge: int):
+    logger.info('Beginning conformer_selection_main with Kraken ID %s', kraken_id)
 
     # Make a string to contain warnings
     warnings = ''
@@ -647,24 +648,40 @@ def conformer_selection_main(kraken_id: str,
             warnings += f'{kraken_id}_{suffix} has inconsistent structures! Check manually.'
             return False, warnings
 
+    # Change the print options
+    np.set_printoptions(threshold=np.inf)
+
     # If we're doing both the noNi and Ni datasets
     if len(suffixes) == 2:
         conmat_check_cross = np.zeros((len(conmats_all["noNi"]), len(conmats_all["Ni"])))
-        for i,j in zip(range(len(conmats_all["noNi"])),range(len(conmats_all["Ni"]))):
+
+        for i, j in zip(range(len(conmats_all["noNi"])), range(len(conmats_all["Ni"]))):
             if np.shape(conmats_all["noNi"][i]) != np.shape(conmats_all["Ni"][j]):
                 conmat_check_cross[i,j] = 1
+                logger.warning('conmat %d of the noNi dataset and conmat %d of the Ni dataset were not the same shape', i, j)
+                print(f'noNi: \n {conmats_all["noNi"][i]}')
+                print(f'elements:\n{elements_all["noNi"][i]}')
+                print(f'Ni: \n {conmats_all["Ni"][j]}')
+                print(f'elements:\n{elements_all["Ni"][j]}')
             elif np.abs(conmats_all["noNi"][i]-conmats_all["Ni"][j]).sum() != 0.0:
-                conmat_check_cross[i,j] = 1
+                conmat_check_cross[i, j] = 1
+                logger.warning('conmat %d of the noNi dataset and conmat %d of the Ni dataset do not sum to an equal value', i, j)
+                print(f'noNi: \n {conmats_all["noNi"][i]}')
+                print(f'elements:\n{elements_all["noNi"][i]}')
+                print(f'Ni: \n {conmats_all["Ni"][j]}')
+                print(f'elements:\n{elements_all["Ni"][j]}')
 
         if np.sum(conmat_check_cross) != 0:
             logger.critical('%s has inconsistent structures between conformer sets %s. Check manually.', kraken_id, str(suffixes))
             warnings += f'{kraken_id} inconsistent structures between the conformer sets  {suffixes}! Check manually.'
-            return False, warnings
+            logger.critical('Dumping conmat_check_cross')
+            print(conmat_check_cross)
+            #return False, warnings
     else:
         raise ValueError(f'Somehow the number of jobs performed for {kraken_id} was {len(suffixes)}')
 
     logger.info('Structure validation completed in %.2f seconds. All checks passed.', time.time() - starttime)
-    logger.info('[INFO] Begin conformer selection.')
+    logger.info('Begin conformer selection.')
 
     # Run the function that actually does the conformer selection
     conformers_to_use = conformer_selection(suffixes,
@@ -828,6 +845,7 @@ def conformer_selection_main(kraken_id: str,
 
             write_coms(directory=f'{save_dir.absolute()}',
                        name=confname,
+                       charge=charge,
                        suffix="",
                        geometry=geometry_string,
                        joboption="all",

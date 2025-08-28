@@ -16,12 +16,15 @@ import yaml
 import numpy as np
 
 # Custom
-from kraken.geometry import get_Ni_CO_3, replace, perform_pdcl5_complexation_to_get_metal_complexation_geometry
+from kraken.geometry import get_Ni_CO_3, replace
 from kraken.semiempirical import run_crest, _get_crest_version
 from kraken.xtb import _get_xtb_version, xtb_opt
 from kraken.Kraken_Conformer_Selection_Only import conformer_selection_main
 from kraken.file_io import write_xyz
 from kraken.structure_generation import get_coords_from_smiles
+from kraken.structure_generation import get_nickel_co3_complex_with_replace_method
+from kraken.structure_generation import perform_pdcl5_complexation_to_get_metal_complexation_geometry
+from kraken.structure_generation import generate_nickel_carbonyl_complex
 from kraken.utils import _str_is_smiles
 from kraken.utils import get_P_bond_indeces_of_ligand
 from kraken.utils import get_rotatable_bonds, reduce_data, combine_yaml
@@ -62,8 +65,8 @@ def convert_conversion_flag(flag: int) -> tuple[bool, str]:
 
 def run_kraken_calculation(kraken_id: str,
                            structure_input: str | Path,
+                           charge: int,
                            mol_dir: Path,
-                           dft_dir: Path,
                            reduce_crest_output: bool,
                            dummy_distance: float,
                            settings: dict,
@@ -75,20 +78,81 @@ def run_kraken_calculation(kraken_id: str,
                            add_Pd_Cl2_PH3: bool = False,
                            add_Ni_CO_3: bool = False) -> None:
     '''
+    This is the primary function that executes the Kraken conformer
+    search and conformer selection code.
+
+    Parameters
+    ----------
+    kraken_id: str
+        The Kraken ID. Must be entirely numeric and 8 digits
+        formatted as a string (NOT an integer)
+
+    structure_input: str | Path
+        The input that represents the structure to be computed.
+        Can be either a SMILES string or a pathlib.Path object
+        that points to a .xyz file contain the coordinates of
+        the monophosphine.
+
+    charge: int
+        Charge of the molecule.
 
     mol_dir: Path
-        Directory for this particular molecule/ligand that will contain
-        the CREST and xTB calculations as well as the dft/ directory for
-        the second part of Kraken.
+        Directory for this particular molecule/ligand that will
+        contain the CREST and xTB calculations as well as the
+        DFT directory for the second part of Kraken.
+
+    reduce_crest_output: bool
+        Removes files from the CREST and xTB calculations to save
+        space.
+
+    dummy_distance: float
+        Dummy distance for MORFEUS (default should be 2.1 Å)
+
+    settings: dict
+        A dictionary of settings that are useful to this function.
+
+            'max_E': 6.0, (UNUSED)
+            'max_p': 0.1, (UNUSED)
+            'OMP_NUM_THREADS': nprocs, (UNUSED - set before calling function)
+            'MKL_NUM_THREADS': nprocs, (UNUSED - set before calling function)
+            'dummy_distance': 2.1, # Additional record of dummy distance
+            'remove_scratch': True, (UNUSED)
+            'reduce_output': reduce_crest_output, # Additional record of reduce_output
+            'add_Pd_Cl2': False, (UNUSED)
+            'add_Pd_Cl2_PH3': False, (UNUSED)
+            'add_Ni_CO_3': False (UNUSED)
+
+    metal_char: str (default = 'Ni')
+        Metal character to add to the structure when computing the
+        Ni-bound conformations.
+
+    jobs: list[str]
+        List of jobs to run. Should include 'Ni' and 'noNi' by default
+
+    nprocs:
+        Number of processors to use in the CREST/xTB calculations
+
+    conversion_flag: int (options = 1, 2, 3, 4)
+        Method to use for converting SMILES to 3D coordinates
+
+    add_Pd_Cl2: (default = False)
+        Deprecated
+
+    add_Pd_Cl2_PH3: (default = False)
+        Deprecated
+
+    add_Ni_CO_3: (default = False)
+        Deprecated
+
+    Returns
+    -------
+    None
     '''
     #TODO add options for noreftopo and nocross
 
     # Do some existence checking
     if not mol_dir.exists():
         raise FileNotFoundError(f'{mol_dir.absolute()} does not exist')
-
-    if not dft_dir.exists():
-        raise FileNotFoundError(f'{dft_dir.absolute()} does not exist')
 
     if mol_dir.name != kraken_id:
         raise FileNotFoundError(f'directory name ->{mol_dir.name}<- does not match the Kraken ID ->{kraken_id}<-')
@@ -143,7 +207,6 @@ def run_kraken_calculation(kraken_id: str,
     for job in jobs:
 
         logger.info('Starting job %s for %s', job, kraken_id)
-        logger.debug('xyz_file_path: %s', str(xyz_file_path))
         logger.debug('smiles: %s', smiles)
         logger.debug('generate_xyz: %s', generate_xyz)
 
@@ -159,62 +222,25 @@ def run_kraken_calculation(kraken_id: str,
 
                 logger.info('Job requested was %s but %s was not in %s. Adding %s.', job, metal_char, smiles, metal_char)
 
-                # This will get us a geometry that should be able to accomodate Ni(CO)3
-                coords_ligand, elements_ligand = perform_pdcl5_complexation_to_get_metal_complexation_geometry(kraken_id=kraken_id,
-                                                                                                               smiles=smiles,
-                                                                                                               conversion_method=conversion_method,
-                                                                                                               mol_dir=mol_dir,
-                                                                                                               spacer_smiles='[Pd]([Cl])([Cl])([Cl])([Cl])[Cl]')
+                # Make a directory for creating the initial structure
+                # This is the new method that seems to have a higher success rate
+                # The old method is get_nickel_co3_complex_with_replace_method
+                structure_generation_directory = mol_dir / 'structure_generation'
+                structure_generation_directory.mkdir(exist_ok=True)
 
-                P_index, bond_indeces = get_P_bond_indeces_of_ligand(coords_ligand, elements_ligand)
+                elements, coords = generate_nickel_carbonyl_complex(kraken_id=kraken_id,
+                                                                    smiles=smiles,
+                                                                    charge=charge,
+                                                                    structure_gen_dir=structure_generation_directory)
 
-                if len(bond_indeces) != 3:
-                    logger.warning('Number of P-bonds before adding complex was %d instead of 3 for SMILES %s', len(bond_indeces), smiles)
-
-                direction = np.zeros((3))
-
-                for bond_index in bond_indeces:
-                    direction += (coords_ligand[bond_index] - coords_ligand[P_index])
-
-                direction /= (-np.linalg.norm(direction))
-                coords_ligand=np.array(coords_ligand.tolist() + [(coords_ligand[P_index] + 2.25 * direction).tolist()])
-                elements_ligand.append(metal_char)
-                match_pd_ind=len(elements_ligand) - 1
-                match_p_idx = P_index
-
-                # replace(c1_i, e1_i, c2_i, e2_i,  Au_index, P_index, match_Au_index, match_P_index, rotate_third_axis=True)
-                #coords_pd, elements_pd, pd_idx, p_idx = geometry.get_Pd_NH3_Cl_Cl()
-                #metal_char="Pd"
-
-                coords_pd, elements_pd, pd_idx, p_idx = get_Ni_CO_3()
-                success, coords, elements = replace(coords_pd, elements_pd, coords_ligand, elements_ligand, pd_idx, p_idx, match_pd_ind, match_p_idx, smiles, rotate_third_axis=True)
-                if elements==None:
-                    exit(f'[FATAL] Elements is None for {smiles}. Exiting gracefully.')
-                if len(elements)==0:
-                    exit(f'[FATAL] Elements is empty for {smiles}. Exiting gracefully.')
-
-                #print(coords[0])
-                xtb_scr_dir = mol_dir / 'xtb_scr_dir'
-                xtb_scr_dir.mkdir(exist_ok=True)
-
-                logger.info('Optimizing preliminary complex.')
-
-                coords, elements = xtb_opt(coords=coords, elements=elements, smiles=smiles, scratch_dir=xtb_scr_dir, charge=0, nprocs=nprocs, freeze=[])
-
+                # Set the phosphorus index
                 P_index = list(elements).index('P')
-
-                #As_index=elements.index("As")
-                #elements[As_index]="N"
-
                 settings['P_index'] = P_index
-                if not success:
-                    exit("[FATAL] Pd addition did not work. Exiting gracefully.")
 
             else:
-                logger.info('No metal coordination requested. Generating coordinates from SMILES %s', smiles)
+                logger.info('Generating coordinates from SMILES %s', smiles)
 
-                coords, elements = get_coords_from_smiles(smiles=smiles,
-                                                          conversion_method=conversion_method)
+                coords, elements = get_coords_from_smiles(smiles=smiles, conversion_method=conversion_method)
 
             # Make the file for running crest
             xyz_file_path = crest_calculation_dir / f'{kraken_id}_{job}.xyz'
@@ -222,10 +248,13 @@ def run_kraken_calculation(kraken_id: str,
             write_xyz(destination=xyz_file_path, coords=coords, elements=elements, mask=[])
 
             # Keep a copy in the parent directory for comparison
-            shutil.copy2(xyz_file_path, crest_calculation_dir / f'{kraken_id}_{job}_crest_input_structure_copy.xyz')
+            shutil.copy2(xyz_file_path, mol_dir / f'{kraken_id}_{job}_crest_input_structure_copy.xyz')
 
         # Else if handed an xyz file
         else:
+            if xyz_file_path is None:
+                raise FileNotFoundError(f'Something went wrong and xyz_file_path was set to None.')
+
             elements, coords = read_xyz(xyz_file_path)
 
             if 'Ni' in elements:
@@ -241,6 +270,7 @@ def run_kraken_calculation(kraken_id: str,
                                                                                                                                                            nprocs=nprocs,
                                                                                                                                                            reduce_output=reduce_crest_output,
                                                                                                                                                            smiles=smiles,
+                                                                                                                                                           charge=charge,
                                                                                                                                                            metal_char=metal_char,
                                                                                                                                                            add_Pd_Cl2=add_Pd_Cl2,
                                                                                                                                                            add_Pd_Cl2_PH3=add_Pd_Cl2_PH3,
@@ -378,16 +408,21 @@ def run_kraken_calculation(kraken_id: str,
 
         logger.info('Finished job %s for Kraken ID %s', job, kraken_id)
 
-    logger.info('Selecting conformers for Kraken ID %s', kraken_id)
-
     # Define the two combined data files
     noNi_datafile = mol_dir / f'{kraken_id}_noNi_combined.yml'
     Ni_datafile = mol_dir / f'{kraken_id}_Ni_combined.yml'
+
+    # Make the directory to save the DFT com files to
+    dft_dir = mol_dir / 'dft'
+    dft_dir.mkdir(exist_ok=True)
+
+    logger.info('Selecting conformers for Kraken ID %s. Output .com files to %s', kraken_id, str(dft_dir.absolute()))
 
     conformer_selection_main(kraken_id,
                              save_dir=dft_dir,
                              noNi_datafile=noNi_datafile,
                              Ni_datafile=Ni_datafile,
-                             nprocs=nprocs)
+                             nprocs=nprocs,
+                             charge=charge)
 
     logger.info('Completed all semiempirical calculations and conformer selection for Kraken ID %s', kraken_id)

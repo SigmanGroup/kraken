@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 def get_link0(n):
     mem = int(round(96 / 40*n-0.5))  #int(round(96/40*n-0.5))
     return("%%nprocs=%i\n%%mem=%iGB\n"%(n, mem))
@@ -134,23 +138,60 @@ get_geoms = {"xyz":get_geom_xyz,
              "out":get_geom_gout,
          }
 
-def write_coms(directory, name, suffix, geometry, joboption, num_processors=40):
+def write_coms(directory,
+               name,
+               charge: int,
+               suffix,
+               geometry,
+               joboption: str,
+               num_processors=40):
     filecontent = ""
-    read = 0 # write "geom=check guess=read"
-    link = 0 # write "--Link1--" at the beginning
-    writegeom = 1 # write the geometry
+    # write "geom=check guess=read"
+    read = 0
+
+    # write "--Link1--" at the beginning
+    link = 0
+
+    # write the geometry
+    writegeom = 1
+
+    # Iterate through the jobs we're running (should be 'all' by default)
     for job in joboptions[joboption]:
-        has_heavymetal,route,basiscard = metaldetector(geometry,job)
+
+        logger.info('Making jobs for job option %s', joboption)
+
+        has_heavymetal, route, basiscard = metaldetector(geometry,job)
+
         if "output=wfn" in route:
             wfnline = f"{name}.wfn\n\n"
         else:
             wfnline = ""
-        if (jobsetup[job][1] != "0 1" and joboption != "sp_os") or "scrf" in route:
+
+        if (jobsetup[job][1] != f"0 1" and joboption != "sp_os") or "scrf" in route:
             chkline = f"%oldchk={name}.chk\n%chk={name}_{job}.chk\n"
         else:
             chkline = f"%chk={name}.chk\n"
 
-        filecontent += link*"--Link1--\n" + get_link0(num_processors) + chkline + route + read*"geom=check guess=read "+f"\n\n{name}_{job}\n\n" + jobsetup[job][1]+"\n"+geometry.title()*writegeom + "\n" + basiscard + wfnline
+        filecontent += link*"--Link1--\n"
+        filecontent += get_link0(num_processors)
+        filecontent += chkline + route + read*"geom=check guess=read "
+        filecontent += f"\n\n{name}_{job}\n\n"
+
+        # Here is where we will modify the charge
+        charge_multiplicity_card = jobsetup[job][1]
+        if charge != 0:
+
+            # Break the card into its separate components
+            _charge_card, _mult_card = charge_multiplicity_card.split(' ')
+            _charge_card = int(_charge_card)
+            _charge_card += int(charge)
+
+            # Format it again
+            charge_multiplicity_card = f'{str(int(_charge_card))} {_mult_card}'
+
+        # Now continue formatting the file
+        filecontent += charge_multiplicity_card + "\n" + geometry.title()*writegeom + "\n"
+        filecontent += basiscard + wfnline
 
         if joboption != "sp_os":
             read = 1

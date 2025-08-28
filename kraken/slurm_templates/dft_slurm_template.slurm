@@ -14,3 +14,4 @@ module load gaussian16/SSE4.C01
 run_kraken_dft --kid $KID \
                --dir "$CALCDIR" \
                --nprocs $NPROCS \
+               --charge $CHARGE \

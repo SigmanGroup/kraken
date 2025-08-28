@@ -124,6 +124,7 @@ def write_dft_job_file(kraken_id: str,
                        time: int,
                        template: Path,
                        nprocs: int,
+                       charge: int,
                        mem: int,
                        force: bool = False) -> Path:
     '''
@@ -135,6 +136,7 @@ def write_dft_job_file(kraken_id: str,
     text = re.sub(r'\$KID', str(kraken_id), text)
     text = re.sub(r'\$TIME', str(time), text)
     text = re.sub(r'\$NPROCS', str(nprocs), text)
+    text = re.sub(r'\$CHARGE', str(charge), text)
     text = re.sub(r'\$MEM', str(mem), text)
     text = re.sub(r'\$CALCDIR', str(directory.absolute()), text)
 
@@ -161,7 +163,7 @@ def main() -> None:
     else:
         slurm_template = Path(SLURM_TEMPLATE)
 
-    ids, inputs, conversion_flags = _parse_csv(input_file)
+    ids, inputs, conversion_flags, charges = _parse_csv(input_file)
 
     ids = [_correct_kraken_id(x) for x in ids]
 
@@ -173,7 +175,7 @@ def main() -> None:
     )
 
     # Iterate over the input
-    for id, smiles, conversion_flag in zip(ids, inputs, conversion_flags):
+    for id, smiles, conversion_flag, charge in zip(ids, inputs, conversion_flags, charges):
         dest = Path(f'./{id}_dft.slurm')
 
         # Write the jobfile
@@ -183,6 +185,7 @@ def main() -> None:
                                      time=args.time,
                                      template=slurm_template,
                                      nprocs=args.nprocs,
+                                     charge=charge,
                                      mem=args.mem,
                                      force=args.force)
 

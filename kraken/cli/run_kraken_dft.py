@@ -106,6 +106,13 @@ def get_args() -> argparse.Namespace:
                         help='Input Kraken ID for which the DFT processing is done\n\n',
                         metavar='INT')
 
+    parser.add_argument('-c', '--charge',
+                        dest='charge',
+                        required=True,
+                        type=int,
+                        help='Charge of the molecule\n\n',
+                        metavar='INT')
+
     parser.add_argument('-d', '--dir',
                         dest='datadir',
                         required=True,
@@ -786,7 +793,7 @@ def run_conformer_properties(logfile: Path,
     logger.info('Running multiwfn')
     wfn, vtx, multiwfn_output_file = run_multiwfn(file=fchkfile,
                                                   multiwfn_executable=MULTIWFN_EXECUTABLE,
-                                                  multiwfn_settings_file=MULTIWFN_SETTINGS_FILE)
+                                                  multiwfn_settings_file=MULTIWFN_SETTINGS)
 
     # Read in the logfile
     with open(logfile, 'r', encoding='utf-8') as _:
@@ -964,6 +971,7 @@ def run_conformer_properties(logfile: Path,
 def run_end(kraken_id: str,
             number_of_processors: int,
             parent_folder: Path,
+            charge: int,
             force_recalculation: bool = False):
     '''
 
@@ -982,7 +990,7 @@ def run_end(kraken_id: str,
 
     # Define an error file that will be written to if certain errors are encountered
     _parent_error_file = dft_folder / f'{kraken_id}_errors.txt'
-    _charge = 0
+    _charge = charge
 
     # Looks like the default is D3 for the old code
     # but this could be set to D4, may break code
@@ -1289,6 +1297,7 @@ def main():
     run_end(kraken_id=args.kraken_id,
             number_of_processors=args.nprocs,
             parent_folder=args.datadir / args.kraken_id,
+            charge=args.charge,
             force_recalculation=args.force)
 
 if __name__ == "__main__":

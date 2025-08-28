@@ -42,8 +42,8 @@ def call_xtb(file: Path,
     xtb --gbsa toluene --lmo --vfukui --esp -P <nprocs> <file>
     xtb --gbsa toluene --vomega --vipea -P <nprocs> <file>
 
-    # The VIPEA calculation may require -P 1, the
-    lmo calculation may not accept any processors indicated to work
+    The VIPEA calculation may require -P 1
+    The lmo calculation may not accept any processors indicated to work
 
     If one of these calculations has not been performed, the program
     will attempt to run it.
@@ -810,7 +810,7 @@ def xtb_opt(coords,
             scratch_dir: Path,
             charge=0,
             nprocs: int | None = None,
-            freeze=[]):
+            freeze=[]) -> tuple:
 
     '''
     nprocs: int | None

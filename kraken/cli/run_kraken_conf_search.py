@@ -27,7 +27,7 @@ from rdkit import Chem
 
 from kraken.semiempirical import _get_crest_version
 from kraken.xtb import _get_xtb_version
-from kraken.utils import _str_is_smiles
+from kraken.utils import _str_is_smiles, _correct_kraken_id
 
 from kraken.new_run_kraken import run_kraken_calculation
 
@@ -79,8 +79,15 @@ def get_args() -> argparse.Namespace:
 
     parser.add_argument('--kraken-id',
                         dest='kraken_id',
-                        required=True,
+                        required=False,
                         help='8-digit Kraken ID number specific to the input\n\n',
+                        metavar='INT')
+
+    parser.add_argument('--charge',
+                        dest='charge',
+                        type=int,
+                        required=False,
+                        help='(Optional) Include the net charge of the single SMILES string or .xyz file\n\n',
                         metavar='INT')
 
     parser.add_argument('--nprocs',
@@ -131,40 +138,10 @@ def get_args() -> argparse.Namespace:
 
     return args
 
-def _correct_kraken_id(kid: int | str) -> str:
+def _parse_csv(csv: Path) -> tuple[list, list, list, list]:
     '''
-    Formats a Kraken ID as an 8-digit zero-padded string.
-
-    Parameters
-    ----------
-    kid : int or str
-        The Kraken ID. Must be entirely numeric and 8 digits
-        or less.
-
-    Returns
-    -------
-    str
-        A zero-padded 8-digit Kraken ID string.
-
-    Raises
-    ------
-    ValueError
-        If the ID is not numeric or exceeds 8 digits.
-    '''
-    kid = str(kid)
-
-    if not kid.isdigit():
-        raise ValueError(f'Kraken ID must be numeric: {kid}')
-
-    if len(kid) > 8:
-        raise ValueError(f'Kraken ID too long ({len(kid)} digits). Max allowed is 8.')
-
-    return kid.zfill(8)
-
-def _parse_csv(csv: Path) -> tuple[list, list, list]:
-    '''
-    Reads a csv file with headers KRAKEN_ID, SMILES,
-    and CONVERSION_FLAG and returns them as lists.
+    Reads a csv file with headers KRAKEN_ID, SMILES, CONVERSION_FLAG, and
+    CHARGE. and returns them as lists.
 
     Parameters
     ----------
@@ -173,9 +150,9 @@ def _parse_csv(csv: Path) -> tuple[list, list, list]:
 
     Returns
     ----------
-    tuple[list, list, list]
-        Lists of Kraken ids, inputs (smiles), and
-        conversion flags.
+    tuple[list, list, list, list]
+        Lists of Kraken ids, inputs (smiles), conversion flags, and
+        charges.
     '''
     if isinstance(csv, str):
         csv = Path(csv)
@@ -184,12 +161,12 @@ def _parse_csv(csv: Path) -> tuple[list, list, list]:
         raise ValueError(f'{csv.name} is not a .csv file.')
     df = pd.read_csv(csv, header=0)
 
-    if not all([x in df.columns for x in ['CONVERSION_FLAG', 'KRAKEN_ID', 'SMILES']]):
-        raise ValueError(f'{csv.name} is not properly formatted. Only use columns CONVERSION_FLAG, KRAKEN_ID, and SMILES.')
+    if not all([x in df.columns for x in ['CONVERSION_FLAG', 'KRAKEN_ID', 'SMILES', 'CHARGE']]):
+        raise ValueError(f'{csv.name} is not properly formatted. Only use columns CONVERSION_FLAG, KRAKEN_ID, SMILES, and CHARGE.')
 
-    return df['KRAKEN_ID'].to_list(), df['SMILES'].to_list(), df['CONVERSION_FLAG'].to_list()
+    return df['KRAKEN_ID'].to_list(), df['SMILES'].to_list(), df['CONVERSION_FLAG'].to_list(), df['CHARGE'].astype(int).to_list()
 
-def _parse_input(args: argparse.Namespace) -> tuple[list, list, list]:
+def _parse_input(args: argparse.Namespace) -> tuple[list, list, list, list]:
     '''
     returns ids, inputs, conversion_flags
     '''
@@ -198,6 +175,7 @@ def _parse_input(args: argparse.Namespace) -> tuple[list, list, list]:
     ids = []
     inputs = []
     conversion_flags = []
+    charges = []
 
     # Handling SMILES first
     if _str_is_smiles(args.input):
@@ -215,6 +193,7 @@ def _parse_input(args: argparse.Namespace) -> tuple[list, list, list]:
 
         ids.append(args.kraken_id)
         inputs.append(args.input)
+        charges.append(args.charge)
 
     elif Path(args.input).exists():
         # TODO This is passed to a read_xyz func later, convert to path
@@ -232,18 +211,17 @@ def _parse_input(args: argparse.Namespace) -> tuple[list, list, list]:
 
             ids.append(args.kraken_id)
             inputs.append(args.input)
+            charges.append(args.charge)
 
         else:
             raise NotImplementedError(f'{file.name} is not supported as an input.')
     else:
         raise ValueError(f'{args.input} is not a valid SMILES string or a Path that does not exist.')
 
-    return ids, inputs, conversion_flags
+    return ids, inputs, conversion_flags, charges
 
 def main():
     '''Main entrypoint'''
-    #TODO figure out what the user is inputting in this section
-    #TODO for now we're just doing smiles
     args = get_args()
 
     logging.basicConfig(
@@ -259,18 +237,12 @@ def main():
     logger.info('Using xTB version %s', str(XTB_VERSION))
     logger.info('Using CREST version %s', str(CREST_VERSION))
 
-    if XTB_VERSION != '6.2.2':
-        logger.warning('xTB version does not match the original kraken version 6.2.2')
-
-    if CREST_VERSION != '2.8':
-        logger.warning('CREST version does not match the original kraken version 2.8')
-
-    if morfeus.__version__ != '0.5.0':
-        logger.warning('MORFEUS version does not match the original kraken version 0.5.0')
-
     # Get all requested kraken_ids, inputs (smiles), and conversion_flags
-    ids, inputs, conversion_flags = _parse_input(args)
+    ids, inputs, conversion_flags, charges = _parse_input(args)
     ids = [_correct_kraken_id(x) for x in ids]
+
+    if None in charges:
+        raise ValueError(f'Found charge of None in charges: {charges}')
 
     # Get the user supplied args
     reduce_crest_output = bool(args.reduce_crest_output)
@@ -294,8 +266,8 @@ def main():
     logger.debug('Inital input: %s', str(args.input))
     logger.info('Found %d Kraken IDs for the Kraken workflow', len(ids))
 
-    for kraken_id, structure_input, conversion_flag in zip(ids, inputs, conversion_flags):
-        logger.info('\t%s\tstructure_input=%s\tconversion_flag=%s', str(kraken_id), str(structure_input), str(conversion_flag))
+    for kraken_id, structure_input, conversion_flag, charge in zip(ids, inputs, conversion_flags, charges):
+        logger.info('\t%s\tstructure_input=%s\tconversion_flag=%s\tcharge=%s', str(kraken_id), str(structure_input), str(conversion_flag), str(charge))
 
     # Set default settings from the original workflow
     # These should not be removed
@@ -323,7 +295,7 @@ def main():
     settings['use_scratch'] = False
 
     # Iterate over the different kraken entries
-    for kraken_id, structure_input, conversion_flag in zip(ids, inputs, conversion_flags):
+    for kraken_id, structure_input, conversion_flag, charge in zip(ids, inputs, conversion_flags, charges):
 
         conversion_flag = int(conversion_flag)
 
@@ -331,13 +303,10 @@ def main():
         mol_dir = calc_dir / kraken_id
         mol_dir.mkdir(exist_ok=True)
 
-        dft_dir = mol_dir / 'dft'
-        dft_dir.mkdir(exist_ok=True)
-
         run_kraken_calculation(kraken_id=kraken_id,
                                structure_input=structure_input,
+                               charge=charge,
                                mol_dir=mol_dir,
-                               dft_dir=dft_dir,
                                reduce_crest_output=settings['reduce_output'],
                                dummy_distance=settings['dummy_distance'],
                                settings=settings,

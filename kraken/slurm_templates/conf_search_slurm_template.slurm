@@ -21,6 +21,7 @@ run_kraken_conf_search \
     -i "$SMILES" \
     --kraken-id $KID \
     --nprocs $NPROCS \
+    --charge $CHARGE \
     --conversion-flag $CONVERSION_FLAG \
     --calculation-dir "$CALCDIR" \
     --reduce_crest_output \

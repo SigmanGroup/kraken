@@ -26,9 +26,6 @@ from rdkit.Chem.rdForceFieldHelpers import UFFGetMoleculeForceField
 
 from morfeus import BuriedVolume, read_xyz
 
-from kraken.utils import get_num_bonds_P, add_Hs_to_P
-from kraken.utils import add_to_smiles, remove_complex
-from kraken.structure_generation import get_coords_from_smiles
 from kraken.file_io import write_xyz
 
 logger = logging.getLogger(__name__)
@@ -90,7 +87,6 @@ def get_Pd_NH3_Cl_Cl():
     p_idx=1
     return(coords, elements, pd_idx, p_idx)
 
-
 def get_Pd_PH3_Cl_Cl():
     crest_best=""" Pd        -0.0000038844        0.0000159819        0.0000111133
  P         -1.6862635579       -1.4845823545        0.0000219312
@@ -110,7 +106,6 @@ def get_Pd_PH3_Cl_Cl():
     p_idx=1
     return(coords, elements, pd_idx, p_idx)
 
-
 def get_Pd_Cl_Cl():
     crest_best=""" Pd        -0.0000038844        0.0000159819        0.0000111133
  P         -1.6862635579       -1.4845823545        0.0000219312
@@ -126,8 +121,7 @@ def get_Pd_Cl_Cl():
     p_idx=1
     return(coords, elements, pd_idx, p_idx)
 
-
-def rotationMatrix(vector,angle):
+def rotationMatrix(vector, angle):
     angle=angle/180.0*np.pi
     norm=(vector[0]**2.0+vector[1]**2.0+vector[2]**2.0)**0.5
     direction=vector/norm
@@ -148,7 +142,16 @@ def rotationMatrix(vector,angle):
 
     return(matrix)
 
-def replace(c1_i, e1_i, c2_i, e2_i,  Au_index, P_index, match_Au_index, match_P_index, smiles, rotate_third_axis=True):
+def replace(c1_i,
+            e1_i,
+            c2_i,
+            e2_i,
+            Au_index,
+            P_index,
+            match_Au_index,
+            match_P_index,
+            smiles,
+            rotate_third_axis=True):
 
     # copy all the initial things to not change the original arrays
     c1=np.copy(c1_i)
@@ -512,94 +515,4 @@ def get_binding_geometry_of_ligand(smiles: str,
 
     return coordinates, elements
 
-
-def perform_pdcl5_complexation_to_get_metal_complexation_geometry(kraken_id: str,
-                                                                  smiles: str,
-                                                                  conversion_method: str,
-                                                                  mol_dir: Path,
-                                                                  spacer_smiles: str = '[Pd]([Cl])([Cl])([Cl])([Cl])[Cl]',
-                                                                  ) -> tuple[NDArray, list]:
-    '''
-    In the original Kraken workflow for conformer generation, the SMILES
-    string analyzed to determine the number of bonds to phosphorus and then
-    replace the phosphorus atom in the smiles to contain hydrogens (if there are
-    fewer than 3 bonds to phosphorus).
-
-    Then a spacer (originally [Pd]([Cl])([Cl])([Cl])([Cl])[Cl]) is added to
-    the modified SMILES string wih add_to_smiles().
-
-    The coordinates of this new complex with the spacer is then generated with the
-    get_coords_from_smiles function. The coordinates of the ligand from this
-    Pd-bound complex are extracted with the remove_complex function. This
-    gets us an initial geometry that should be compatible with the Ni(CO3) template.
-
-    i.e., this function will get a geometry that allows Ni(CO)3 to fit!
-
-    However, it can fail occasionally. A sanity check is included to make sure that
-    the number of atoms removed in the remove_complex function was truly 6 - the number
-    of atoms in the spacer. This can fail if the complex coordinate generation produces
-    a geometry where one of the Cl atoms is placed too closely to an atom in the ligand
-    causing the code to determine that the Cl atom is part of the ligand.
-
-    The Cl-<ATOM> bond (where <ATOM> is an atom from the ligand)is interpreted as part
-    of the ligand and the Cl atom is not removed. This makes the sanity check fail.
-
-    Example:
-    COc1ccc(OC)c(P(c2cc(C(F)(F)F)cc(C(F)(F)F)c2)c2cc(C(F)(F)F)cc(C(F)(F)F)c2)c1-c1c(C(C)C)cc(C(C)C)cc1C(C)C
-    COc1ccc(OC)c([P](c2cc(C(F)(F)F)cc(C(F)(F)F)c2)c2cc(C(F)(F)F)cc(C(F)(F)F)c2)c1-c1c(C(C)C)cc(C(C)C)cc1C(C)
-    COc1ccc(OC)c([P]([Pd]([Cl])([Cl])([Cl])([Cl])[Cl])(c2cc(C(F)(F)F)cc(C(F)(F)F)c2)c2cc(C(F)(F)F)cc(C(F)(F)F)c2)c1-c1c(C(C)C)cc(C(C)C)cc1C(C)C
-    '''
-
-    # Get the number of bonds to phosphorus
-    num_bonds_P = get_num_bonds_P(smiles)
-
-    logger.debug('num_bonds_P of smiles %s: %d', smiles, num_bonds_P)
-
-    # Add the Hs to smiles phosphorus atom
-    # This just adds square brackets if there are 3-bonds to phosphorus
-    smiles_Hs = add_Hs_to_P(smiles, num_bonds_P)
-
-    logger.debug('New formatted smiles is %s', smiles_Hs)
-
-    smiles_incl_spacer = add_to_smiles(smiles_Hs, spacer_smiles)
-
-    logger.debug('smiles_incl_space: %s', smiles_incl_spacer)
-
-    coords_ligand_complex, elements_ligand_complex = get_coords_from_smiles(smiles=smiles_incl_spacer,
-                                                                            conversion_method=conversion_method)
-
-    # Get the number of atoms in the fake Pd(Cl)5 complex
-    num_atoms_with_fake_complex = len(coords_ligand_complex)
-
-    logger.debug('Number of atoms after adding fake complex: %d', num_atoms_with_fake_complex)
-
-    # Remove the complex and get the coordinates of just the ligand (why)
-    coords_ligand, elements_ligand = remove_complex(coords=coords_ligand_complex,
-                                                    elements=elements_ligand_complex,
-                                                    smiles=smiles,
-                                                    metal_char='Pd')
-
-    if coords_ligand is None or elements_ligand is None:
-        raise ValueError(f'Removal of complex from smiles {smiles} failed to generate coordinates')
-
-    # Get the number of atoms without the fake complex
-    num_atoms_without_fake_complex = len(coords_ligand)
-
-    logger.debug('Number of atoms of %s after removing the fake complex: %d', kraken_id, num_atoms_without_fake_complex)
-
-    # Compute the difference
-    difference = num_atoms_with_fake_complex - num_atoms_without_fake_complex
-
-    # Sanity check
-    if difference != 6:
-        write_xyz(destination=Path(mol_dir / f'{kraken_id}_failed_complex_in_generate_xyz_atom_no_difference.xyz'),
-                    coords=coords_ligand_complex,
-                    elements=elements_ligand_complex,
-                    comment='Failed complex generation for Pd(Cl)5 complex',
-                    mask=[])
-        logger.critical('Failure in making templation complex. This could be from incomplete geometry generation from RDKit/Obabel')
-        logger.critical('Try rerunning with a different conversion method, or the same one and hoping to get lucky.')
-        raise ValueError(f'number of removed atoms is {difference}, but should be 6 for Pd(Cl)5. Saved file to {Path(mol_dir / f"{kraken_id}_failed_complex_in_generate_xyz_atom_no_difference.xyz").absolute()}')
-
-    return coords_ligand, elements_ligand
 

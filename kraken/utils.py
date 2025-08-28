@@ -1313,6 +1313,36 @@ def get_mass(elements: list[str]) -> float:
         mass += masses[el.upper()]
     return mass
 
+def _correct_kraken_id(kid: int | str) -> str:
+    '''
+    Formats a Kraken ID as an 8-digit zero-padded string.
+
+    Parameters
+    ----------
+    kid : int or str
+        The Kraken ID. Must be entirely numeric and 8 digits
+        or less.
+
+    Returns
+    -------
+    str
+        A zero-padded 8-digit Kraken ID string.
+
+    Raises
+    ------
+    ValueError
+        If the ID is not numeric or exceeds 8 digits.
+    '''
+    kid = str(kid)
+
+    if not kid.isdigit():
+        raise ValueError(f'Kraken ID must be numeric: {kid}')
+
+    if len(kid) > 8:
+        raise ValueError(f'Kraken ID too long ({len(kid)} digits). Max allowed is 8.')
+
+    return kid.zfill(8)
+
 if __name__ == "__main__":
     #logfile = Path('/home/sigmanuser/James-Kraken/calculations_Ni/2158_Ni/crest.log')
     #read_crest_log(logfile)

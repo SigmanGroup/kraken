@@ -111,6 +111,7 @@ def get_args() -> argparse.Namespace:
 def write_job_file(kraken_id: str,
                    smiles: str,
                    conversion_flag: int,
+                   charge: int,
                    directory: Path,
                    time: int,
                    destination: Path,
@@ -126,6 +127,7 @@ def write_job_file(kraken_id: str,
     text = re.sub(r'\$KID', str(kraken_id), text)
     text = re.sub(r'\$SMILES', str(smiles), text)
     text = re.sub(r'\$CALCDIR', str(directory.absolute()), text)
+    text = re.sub(r'\$CHARGE', str(charge), text)
     text = re.sub(r'\$CONVERSION_FLAG', str(conversion_flag), text)
     text = re.sub(r'\$NPROCS', str(nprocs), text)
     text = re.sub(r'\$MEM', str(mem), text)
@@ -152,9 +154,10 @@ def main() -> None:
     else:
         slurm_template = Path(SLURM_TEMPLATE)
 
-    ids, inputs, conversion_flags = _parse_csv(input_file)
+    ids, inputs, conversion_flags, charges = _parse_csv(input_file)
 
     ids = [_correct_kraken_id(x) for x in ids]
+    charges = [int(x) for x in charges]
 
     calc_dir = Path(args.calc_dir)
     calc_dir.mkdir(exist_ok=True)
@@ -167,13 +170,14 @@ def main() -> None:
     )
 
     # Iterate over the input
-    for id, smiles, conversion_flag in zip(ids, inputs, conversion_flags):
+    for id, smiles, conversion_flag, charge in zip(ids, inputs, conversion_flags, charges):
         dest = Path(f'./{id}_conf.slurm')
 
         # Write the jobfile
         jobfile = write_job_file(kraken_id=id,
                                  smiles=smiles,
                                  conversion_flag=conversion_flag,
+                                 charge=charge,
                                  directory=calc_dir,
                                  time=args.time,
                                  destination=dest,

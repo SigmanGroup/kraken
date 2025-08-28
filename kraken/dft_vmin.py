@@ -530,9 +530,10 @@ def get_geom_fch(vminob: Vminob, file: Path):
     atoms,atomnos = [],[]
     for line in range(atomnumbersstart+1,atomnumbersend):
         atomnos += content[line].split()
+
     for atom in atomnos:
         if atom in vmin_elements:
-            atoms.append(elements[atom]),
+            atoms.append(vmin_elements[atom]),
         else:
             atoms.append(atom)
 

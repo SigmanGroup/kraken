@@ -8,9 +8,10 @@ Custom functions for reading and writing files
 import subprocess
 from pathlib import Path
 
+from rdkit import Chem
+
 import numpy as np
 from numpy.typing import NDArray
-
 
 def readXYZs(file: Path):
     with open(file, 'r') as infile:
@@ -30,7 +31,6 @@ def readXYZs(file: Path):
 
     return coords, elements
 
-
 def exportXYZs(coords,elements,filename):
     outfile=open(filename,"w")
     for idx in range(len(coords)):
@@ -38,7 +38,6 @@ def exportXYZs(coords,elements,filename):
         for atomidx,atom in enumerate(coords[idx]):
             outfile.write("%s %f %f %f\n"%(elements[idx][atomidx].capitalize(),atom[0],atom[1],atom[2]))
     outfile.close()
-
 
 def read_xyz(file: Path) -> tuple[np.ndarray, list]:
     '''
@@ -295,3 +294,67 @@ def get_outstreams(file: Path) -> list[str] | str:
         streams.append(''.join([line.strip() for line in lines[line_start_idx:line_end_index+1]]).split('\\'))
 
     return streams
+
+def coords_to_mol(coords: NDArray,
+                  elements: NDArray | list,
+                  comment: str = '',
+                  mask: list[int] = []) -> Chem.Mol:
+    '''
+    Gets the RDKit.Chem.Mol object from a set of coordinates and elements
+
+    Parameters
+    ----------
+    coords: NDArray
+        A (n_atoms, 3) array of Cartesian coordinates in Ångstrom.
+
+    elements : NDArray
+        A (n_atoms,) array of atomic symbols corresponding to the coordinates.
+
+    comment: str
+        Comment to place into the second line of the file
+
+    mask: list[int]
+        List of atom indices (0-indexed) that will be written to the output
+        file instead of the full set of elements/coordinates
+
+    Returns
+    -------
+    Path
+        The absolute path to the written XYZ file.
+
+    Raises
+    ------
+    ValueError
+        If the number of elements and coordinates are inconsistent.
+    '''
+    if len(coords) != len(elements):
+        raise ValueError(f'Number of coords {len(coords)} does not match number of elements {len(elements)}')
+
+    xyz_lines = []
+
+    # Write only the data for the mask if present
+    if len(mask) != 0:
+        xyz_lines.append(f'{len(mask)}\n{comment}\n')
+        for _idx in mask:
+            _crd = coords[_idx]
+            _ele = elements[_idx]
+            xyz_lines.append(f'{_ele:<3}  {_crd[0]:12.6f}  {_crd[1]:12.6f}  {_crd[2]:12.6f}\n')
+
+    # Write everything if no mask specified
+    else:
+        xyz_lines.append(f'{len(elements)}\n{comment}\n')
+        for element, crd in zip(elements, coords):
+            xyz_lines.append(f'{element:<3}  {crd[0]:12.6f}  {crd[1]:12.6f}  {crd[2]:12.6f}\n')
+
+    # Run obabel with stdin ("-") and stdout ("-O -")
+    cmd = ['obabel', f'-ixyz', "-", f'-omol']
+
+    result = subprocess.run(
+        cmd,
+        input=''.join(xyz_lines).encode('utf-8'),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=True
+    )
+
+    return Chem.MolFromMolBlock(result.stdout.decode('utf-8'), removeHs=False)
