@@ -150,6 +150,9 @@ class Vminob:
         with open(file, 'r', encoding='utf-8') as f:
             cubtxt = f.readlines()
 
+        if len(cubtxt) == 0:
+            raise ValueError(f'Empty cubman test file at {file.absolute()}. Try deleting this file and run again.')
+
         self.esp = np.array(([float(line.split()[-1]) for line in cubtxt]))
         self.v_min = np.amin(self.esp)
         self.vmin_ind = int(np.where(self.esp==self.v_min)[0][0])
@@ -412,7 +415,7 @@ def get_vmin(fchk: Path,
             logger.info('Running cubman')
             cubman_output_file = run_cubman(cube_file=cubegen_output_file)
         else:
-            logger.info('Found output .txt file from cubman at %s', str(cubman_output_file.absolute()))
+            logger.info('Found existing cubman output .txt file at %s', str(cubman_output_file.absolute()))
 
         logger.info('Reading .cub ASCII %s', cubman_output_file.name)
         vminob.read_cubtxt(file=cubman_output_file)

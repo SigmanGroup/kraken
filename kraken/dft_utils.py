@@ -262,7 +262,9 @@ def split_log(file: Path) -> list[Path]:
 
     # jobs = []  # 0: route line. 1: number of start line. 2: number of termination line
     routes   = []  # route line of each subjob
-    chsp     = []  # charge/spin of each subjob
+
+    # Charge/spin of each subjob
+    chsp     = []
     types    = []  # type of subjob
     starts   = [0,]  # index of start line
     ends     = []  # index of end line
@@ -273,6 +275,9 @@ def split_log(file: Path) -> list[Path]:
             routes.append(log_line.strip())
 
         if " #" in log_line and "---" in loglines[i - 1] and "---" in loglines[i + 2]:
+            routes.append(log_line.strip() + loglines[i + 1].strip())
+
+        if " #" in log_line and "---" in loglines[i - 1] and "---" in loglines[i + 3]:
             routes.append(log_line.strip() + loglines[i + 1].strip())
 
         if  re.search("Charge = [-+]?[0-9 ]+multiplicity", log_line, re.IGNORECASE):
@@ -291,29 +296,49 @@ def split_log(file: Path) -> list[Path]:
         ends.append(-2)
         termination.append("none")
 
-    done = True
+    # Get the default charge and multiplicity for the ground state
+    _charge_in_ground_state = chsp[0][0]
+    _mult_in_ground_state = chsp[0][1]
 
+    logger.info('Charge and multiplicity in inital optimization route: %d, %d', _charge_in_ground_state, _mult_in_ground_state)
+    logger.debug('Found these charge/multiplicity cards %s', str(chsp))
+    logger.debug('Found these routes:\n %s', str(routes))
     files_created = []
-
     for i, route in enumerate(routes):
+        logger.debug('Operating on route index %d: %s', i, str(route))
+        logger.debug('Charge and mult of this route: %s', str(chsp[i]))
+
+        # Go through and assign the "types" of jobs we found
         if re.search("opt", route, re.IGNORECASE):
-            types.append("opt")
+            job_type = 'opt'
+
         elif re.search("freq", route, re.IGNORECASE) and not re.search("opt", route,re.IGNORECASE):
-            types.append("freq")
+            job_type = 'freq'
+
         elif re.search("wfn", route, re.IGNORECASE):
-            types.append("sp")
+            job_type = 'sp'
+
         elif re.search("nmr", route, re.IGNORECASE):
-            types.append("nmr")
+            job_type = 'nmr'
+
         elif re.search("efg", route, re.IGNORECASE):
-            types.append("efg")
-        elif re.search("nbo", route, re.IGNORECASE) and chsp[i] == [0, 1]:
-            types.append("nbo")
-        elif re.search("nbo", route, re.IGNORECASE) and chsp[i] == [-1, 2]:
-            types.append("ra")
-        elif re.search("nbo", route, re.IGNORECASE) and chsp[i] == [1, 2]:
-            types.append("rc")
+            job_type = 'efg'
+
+        elif re.search("nbo", route, re.IGNORECASE) and chsp[i] == [_charge_in_ground_state, _mult_in_ground_state]:
+            job_type = 'nbo'
+
+        elif re.search("nbo", route, re.IGNORECASE) and chsp[i] == [_charge_in_ground_state - 1, _mult_in_ground_state + 1]:
+            job_type = 'ra'
+
+        elif re.search("nbo", route, re.IGNORECASE) and chsp[i] == [_charge_in_ground_state + 1, _mult_in_ground_state + 1]:
+            job_type = 'rc'
+
         elif re.search("scrf", route, re.IGNORECASE):
-            types.append("solv")
+            job_type = 'solv'
+        else:
+            raise ValueError('Could not identify job type from route %s', route)
+
+        types.append(job_type)
 
         if len(termination) == 0:
             print("no termination found. exit.")
@@ -323,13 +348,21 @@ def split_log(file: Path) -> list[Path]:
         elif termination[i] == "none":
             raise ValueError(f'The last job of {file.name} did not terminate.')
 
-        file_to_write_to = file.parent / f'{file.stem}_{types[i]}.log'
+        file_to_write_to = file.parent / f'{file.stem}_{job_type}.log'
 
-        with open(file_to_write_to, 'w') as f:
+        with open(file_to_write_to, 'w', encoding='utf-8') as f:
             for line in loglines[starts[i]: ends[i] + 1]:
                 f.write(line)
 
             files_created.append(file_to_write_to)
+
+    if len(files_created) != 9:
+        logger.critical('Only found %d files instead of 9', len(files_created))
+
+    for _job_type in ['opt', 'freq', 'sp', 'nmr', 'efg', 'nbo', 'ra', 'rc', 'solv']:
+        if _job_type not in types:
+            logger.critical('Missing job type %s', _job_type)
+
 
     return files_created
 
