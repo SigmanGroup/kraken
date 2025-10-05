@@ -1,7 +1,6 @@
 #!/bin/bash
-#SBATCH --partition=sigman-shared-np
-#SBATCH --account=sigman-np
-#SBATCH --qos=sigman-low-np
+#SBATCH --partition=sigman-shared-kp
+#SBATCH --account=sigman-kp
 #SBATCH --time=$TIME:00:00
 #SBATCH --ntasks=$NPROCS
 #SBATCH --mem=$MEMG

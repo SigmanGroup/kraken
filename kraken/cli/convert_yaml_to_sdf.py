@@ -8,6 +8,8 @@ For converting confdata yamls from Kraken into SDF files
 import sys
 import yaml
 import logging
+import argparse
+import subprocess
 
 from pathlib import Path
 from yaml import CLoader as Loader
@@ -21,56 +23,54 @@ from rdkit.Chem import AllChem
 from rdkit.Chem import rdDetermineBonds
 
 from rdkit import Chem
-from rdkit.Geometry import Point3D
+
+from morfeus.io import write_xyz
+
+DESCRIPTION = r'''
+╔══════════════════════════════════════╗
+║   | |/ / _ \  /_\ | |/ / __| \| |    ║
+║   | ' <|   / / _ \| ' <| _|| .` |    ║
+║   |_|\_\_|_\/_/ \_\_|\_\___|_|\_|    ║
+╚══════════════════════════════════════╝
+Kolossal viRtual dAtabase for moleKular dEscriptors
+of orgaNophosphorus ligands.
 
 
-def mol_from_elements_coords_connectivity(elements: list[str],
-                                          coords: list[tuple[float, float, float]] | np.ndarray,
-                                          connectivity: np.ndarray) -> Chem.Mol:
-    '''
-    Construct a sanitized RDKit Mol object from atomic elements, 3D coordinates,
-    and a 0/1 connectivity matrix.
+CLI SCRIPT
 
-    Parameters
-    ----------
-    elements: list of str
-        Atomic symbols
+This script converts the <kraken_id>_confdata.yml
+to .xyz and .sdf files.
+'''
 
-    coords: list of tuple[float, float, float] or np.ndarray
-        Atomic coordinates (angstrom)
+def get_args() -> argparse.Namespace:
+    '''Gets the arguments for running Kraken'''
 
-    connectivity:np.ndarray
-        Symmetric 0/1 matrix indicating bonded atom pairs.
+    parser = argparse.ArgumentParser(
+        description=DESCRIPTION,
+        formatter_class=lambda prog: argparse.RawTextHelpFormatter(prog, 2, 40),
+        allow_abbrev=False,
+        add_help=False)
 
-    Returns
-    -------
-    Mol
-        RDKit Mol object with inferred bond orders.
-    '''
-    if isinstance(coords, list):
-        coords = np.array(coords)
-    if coords.shape[0] != len(elements) or connectivity.shape != (len(elements), len(elements)):
-        raise ValueError('Inconsistent dimensions among elements, coords, and connectivity matrix.')
+    parser.add_argument('-h', '--help',
+                        action='help',
+                        default=argparse.SUPPRESS,
+                        help='Show this help message and exit.\n\n')
 
-    mol = Chem.RWMol()
-    for symbol in elements:
-        mol.AddAtom(Chem.Atom(symbol))
+    parser.add_argument('-f', '--file',
+                        dest='file',
+                        required=True,
+                        type=Path,
+                        help='<kraken_id>_confdata.yml file to convert.\n\n',
+                        metavar='STR')
 
-    for i in range(len(elements)):
-        for j in range(i + 1, len(elements)):
-            if connectivity[i, j] == 1:
-                mol.AddBond(i, j, Chem.rdchem.BondType.SINGLE)
+    parser.add_argument('--debug', action='store_true', help='Prints debug information\n\n')
 
-    conf = Chem.Conformer(len(elements))
-    for i, (x, y, z) in enumerate(coords):
-        conf.SetAtomPosition(i, Point3D(x, y, z))
-    mol.AddConformer(conf, assignId=True)
+    args = parser.parse_args()
 
-    # Convert to Mol and sanitize (infers bond types, valences, aromaticity)
-    mol = mol.GetMol()
-    Chem.SanitizeMol(mol)
+    if not args.file.exists():
+        raise FileNotFoundError(f'Could not locate {args.file.absolute()}.')
 
-    return mol
+    return args
 
 def write_single_sdf_file(mol,
                           destination: Path) -> None:
@@ -88,42 +88,52 @@ def main():
     '''
     Main function
     '''
+    # Get arguments
+    args = get_args()
+
     # Set up logging
     logger = logging.getLogger(__name__)
 
     logging.basicConfig(
-        level=logging.DEBUG,
+        level=logging.DEBUG if args.debug else logging.INFO,
         format='[%(levelname)-5s - %(asctime)s] [%(module)s] %(message)s',
         datefmt='%m/%d/%Y:%H:%M:%S',
         handlers=[logging.StreamHandler(sys.stdout)]
     )
 
+    confdata_file = Path(args.file)
+
     # Define path for saving SDF files
-    desination_folder = Path('./initial_data/conformer_sdfs')
+    xyz_folder = confdata_file.parent / 'converted_xyz_files'
+    sdf_folder = confdata_file.parent / 'converted_sdf_files'
+    xyz_folder.mkdir(exist_ok=True)
+    sdf_folder.mkdir(exist_ok=True)
 
     files = sorted([x for x in Path('./initial_data/DFT_yamls/').glob('*_confdata.yml')])
 
-    for file in files:
+    # Read in file and get elements, coords, and conmat
+    with open(confdata_file, 'r', encoding='utf-8') as f:
+        data = yaml.load(f, Loader=Loader)
 
-        logger.info('Working on file %s', file.name)
+    # Iterate through the conformers, conformer_name is the stem of the file
+    for conformer_name, conformer_data_dictionary in data.items():
 
-        with open(file, 'r', encoding='utf-8') as f:
-            data = yaml.load(f, Loader=Loader)
+        elements = conformer_data_dictionary['elements']
+        coordinates = conformer_data_dictionary['coords']
+        conmat = np.array(conformer_data_dictionary['conmat'])
 
-        # Iterate through the conformer
-        for conformer_name, conformer_data_dictionary in data.items():
+        # Write the xyz
+        xyz_file = xyz_folder / f'{conformer_name}.xyz'
+        write_xyz(xyz_file,
+                  elements=elements,
+                  coordinates=coordinates)
 
-            elements = conformer_data_dictionary['elements']
-            coordinates = conformer_data_dictionary['coords']
-            conmat = np.array(conformer_data_dictionary['conmat'])
-
-            mol = mol_from_elements_coords_connectivity(elements=elements,
-                                                        coords=coordinates,
-                                                        connectivity=conmat)
-
-            write_single_sdf_file(mol=mol, destination=desination_folder / f'{conformer_name}.sdf')
-
-        exit()
+        # Convert with obabel through subprocess to get connectivity
+        # This is required since the binary conmat does not reconstruct
+        # aromatic and double bonds well
+        sdf_file = sdf_folder / f'{conformer_name}.sdf'
+        cmd = ['obabel', '-ixyz', str(xyz_file.absolute()), '-osdf', f'-O{sdf_file.absolute()}']
+        subprocess.run(args=cmd, cwd=sdf_folder, check=False)
 
 if __name__ == "__main__":
     main()

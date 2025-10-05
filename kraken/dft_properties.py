@@ -192,15 +192,72 @@ def get_dipole(streams,blank):
     return([None])
 
 def get_quadrupole(streams,blank):
-    """Return a 4-member list with the xx,yy,zz eigenvalues and the amplitude of the quadrupole moment tensor."""
+    '''
+    Extract the quadrupole tensor from a Gaussian output archive block,
+    diagonalize it, and return rotation-invariant descriptors
+    (xx,yy,zz eigenvalues and the amplitude of the quadrupole moment tensor.).
+
+    [[XX, XY, XZ],
+    [XY, YY, YZ],
+    [XZ, YZ, ZZ]]
+
+    Parameters
+    ----------
+    streams:
+
+    blank: any
+        Unused argument.
+
+    Returns
+    -------
+    q_results: list[float] | list[None]
+        If quadrupole data is found, returns a 4-element list of rotation-invariant values:
+            [0]: float
+                Quadrupole amplitude, computed as the Euclidean norm of the eigenvalues
+                (equivalent to the Frobenius norm of the tensor).
+            [1]: float
+                Maximum eigenvalue of the quadrupole tensor.
+            [2]: float
+                Middle eigenvalue, inferred as -(λ_max + λ_min) under the traceless condition
+                (valid because Gaussian reports traceless quadrupoles).
+            [3]: float
+                Minimum eigenvalue of the quadrupole tensor.
+
+        If no quadrupole entry is present in the archive, returns [None].
+
+    Notes
+    -----
+    - Raw tensor components (Qxx, Qyy, etc.) are orientation-dependent,
+      but the eigenvalues and amplitude returned here are orientation-independent.
+    - Quadrupole tensors can be origin-dependent if reported in a field-dependent basis;
+      Gaussian's “field-independent” traceless quadrupoles avoid this issue.
+    '''
+    # Iterate through the last element of streams (archive tokens from Gaussian output)
     for item in streams[-1]:
+
+        # Look for the string containing "Quadrupole"
         if "Quadrupole" in item:
+
+            # Extract six floating point numbers (XX, YY, ZZ, XY, XZ, YZ) from the line
             q = [float(i) for i in re.findall(float_pattern_p,item)]
+
+            # Construct the symmetric 3x3 quadrupole tensor from those six components
             q_comps = np.array(([q[0],q[3],q[4]],[q[3],q[1],q[5]],[q[4],q[5],q[2]]))
+
+            # Compute the eigenvalues of the quadrupole tensor (principal values)
             q_diag = np.linalg.eig(q_comps)[0]
+
+            # Compute the Euclidean norm (magnitude) of the eigenvalue vector
+             # This gives an overall "amplitude" of the quadrupole tensor
             q_ampl = np.linalg.norm(q_diag)
-            q_results = [q_ampl,np.max(q_diag),-(np.max(q_diag)+np.min(q_diag)),np.min(q_diag)]
-            return(q_results)
+
+            # Build a results list:
+            # [0] = quadrupole amplitude (overall size, scalar)
+            # [1] = largest eigenvalue (principal axis with largest moment)
+            # [2] = inferred middle eigenvalue, using traceless condition λ2 = -(λmax + λmin)
+            # [3] = smallest eigenvalue (principal axis with smallest moment)
+            q_results = [q_ampl, np.max(q_diag), -(np.max(q_diag) + np.min(q_diag)), np.min(q_diag)]
+            return q_results
     return([None])
 
 def get_efg(filecont,query):

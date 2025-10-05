@@ -964,7 +964,7 @@ def run_conformer_properties(logfile: Path,
     with open(conformer_yml_file, 'w', encoding='utf-8') as f:
         yaml.dump(data=confdata, stream=f, Dumper=Dumper)
 
-    logger.info('Finished confomer %s', logfile.name)
+    logger.info('Finished conformer %s', logfile.name)
 
     return conformer_yml_file
 
