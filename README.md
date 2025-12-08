@@ -40,13 +40,13 @@ users outside of the Sigman group, please see (and modify) the SLURM templates i
 accommodate your job scheduler __before installation__. Please note that special symbols exist in the SLURM templates that
 are substituted with actual values required by SLURM including `$KID`, `$NPROCS`, `$MEM`, and several others.
 
-1. Format a `.csv` file that contains your monophosphine SMILES string, kraken id, and conversion flag:
+1. Format a `.csv` file that contains the columns SMILES, KRAKEN_ID, CHARGE, CONVERSION_FLAG:
 
-    | KRAKEN_ID | SMILES           | CONVERSION_FLAG |
-    |-----------|------------------|-----------------|
-    | 5039      | CP(C)C           | 4               |
-    | 10596     | CP(C1=CC=CC=C1)C | 4               |
-    | ...       | ...              | ...             |
+    | KRAKEN_ID | SMILES           | CHARGE | CONVERSION_FLAG |
+    |-----------|------------------|--------|-----------------|
+    | 5039      | CP(C)C           |    0   |        4        |
+    | 10596     | CP(C1=CC=CC=C1)C |    0   |        4        |
+    | ...       | ...              |   ...  |       ...       |
 
 2. Run the example submission script with your requested inputs and configurations:
 
