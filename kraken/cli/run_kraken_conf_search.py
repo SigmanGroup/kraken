@@ -159,6 +159,7 @@ def _parse_csv(csv: Path) -> tuple[list, list, list, list]:
 
     if csv.suffix != '.csv':
         raise ValueError(f'{csv.name} is not a .csv file.')
+
     df = pd.read_csv(csv, header=0)
 
     if not all([x in df.columns for x in ['CONVERSION_FLAG', 'KRAKEN_ID', 'SMILES', 'CHARGE']]):
@@ -196,8 +197,11 @@ def _parse_input(args: argparse.Namespace) -> tuple[list, list, list, list]:
         charges.append(args.charge)
 
     elif Path(args.input).exists():
+
         # TODO This is passed to a read_xyz func later, convert to path
         file = Path(args.input)
+
+        logger.debug('Parsing %s as a Path', file.absolute())
 
         if file.suffix == '.csv':
             return _parse_csv(file)

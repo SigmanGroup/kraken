@@ -145,6 +145,13 @@ def main() -> None:
     # Get the args
     args = get_args()
 
+    logging.basicConfig(
+        level=logging.DEBUG if args.debug else logging.INFO,
+        format='[%(levelname)-5s - %(asctime)s] [%(module)s] %(message)s',
+        datefmt='%m/%d/%Y:%H:%M:%S',
+        handlers=[logging.StreamHandler(sys.stdout)]
+    )
+
     # Get the input file
     input_file = Path(args.csv)
 
@@ -155,19 +162,11 @@ def main() -> None:
         slurm_template = Path(SLURM_TEMPLATE)
 
     ids, inputs, conversion_flags, charges = _parse_csv(input_file)
-
     ids = [_correct_kraken_id(x) for x in ids]
     charges = [int(x) for x in charges]
 
     calc_dir = Path(args.calc_dir)
     calc_dir.mkdir(exist_ok=True)
-
-    logging.basicConfig(
-        level=logging.DEBUG if args.debug else logging.INFO,
-        format='[%(levelname)-5s - %(asctime)s] [%(module)s] %(message)s',
-        datefmt='%m/%d/%Y:%H:%M:%S',
-        handlers=[logging.StreamHandler(sys.stdout)]
-    )
 
     # Iterate over the input
     for id, smiles, conversion_flag, charge in zip(ids, inputs, conversion_flags, charges):
