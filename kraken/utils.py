@@ -1401,6 +1401,8 @@ def confirm_defined_stereochemistry(smiles: str) -> str:
                 f'SMILES has ambiguous double bond stereochemistry: {smiles!r}'
             )
 
+        logger.warning('SMILES %s has an undefined stereocenter.', smiles)
+
         return sanitize_smiles(smiles=smiles)
 
     # Otherwise, ambiguity >=2 stereogenic centers can generate diastereomers

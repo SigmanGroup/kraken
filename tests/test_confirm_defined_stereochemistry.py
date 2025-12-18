@@ -63,7 +63,8 @@ def test_confirm_defined_stereochemistry_rejects_expected(smiles: str) -> None:
 def test_confirm_defined_stereochemistry_accepts_expected(smiles: str) -> None:
     '''
     Verifies that SMILES with either fully specified stereochemistry or a single
-    undefined point stereocenter are accepted.
+    undefined point stereocenter are accepted. It asserts that the function
+    returns a non-empty str.
 
     Parameters
     ----------
@@ -72,8 +73,7 @@ def test_confirm_defined_stereochemistry_accepts_expected(smiles: str) -> None:
 
     Returns
     -------
-    None: NoneType
-        This test returns nothing. It asserts that the function returns a non-empty str.
+    None
     '''
     out = confirm_defined_stereochemistry(smiles)
 
@@ -89,13 +89,11 @@ def test_confirm_defined_stereochemistry_rejection_messages_include_context() ->
 
     Parameters
     ----------
-    None: NoneType
-        No parameters.
+    None
 
     Returns
     -------
-    None: NoneType
-        This test returns nothing. It asserts message contents for a specific failure mode.
+    None
     '''
     with pytest.raises(ValueError) as excinfo:
         confirm_defined_stereochemistry(UNDF_DOUBLE_BOND)

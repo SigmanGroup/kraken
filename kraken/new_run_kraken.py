@@ -28,6 +28,7 @@ from kraken.structure_generation import generate_nickel_carbonyl_complex
 from kraken.utils import _str_is_smiles
 from kraken.utils import get_P_bond_indeces_of_ligand
 from kraken.utils import get_rotatable_bonds, reduce_data, combine_yaml
+from kraken.utils import confirm_defined_stereochemistry
 from kraken.morfeus_properties import run_morfeus
 
 from morfeus import read_xyz
@@ -62,6 +63,41 @@ def convert_conversion_flag(flag: int) -> tuple[bool, str]:
         raise ValueError(f'Could not find valid conversion method for flag {flag}')
 
     return generate_xyz, conversion_method
+
+def normalize_structure_input(structure_input) -> tuple:
+    '''
+    Normalize structure input to either a validated SMILES or an existing file path.
+
+    Parameters
+    ----------
+    structure_input: str | Path
+        Either a SMILES string, or a Path to an existing structure file.
+
+    Returns
+    -------
+    result: tuple
+        (smiles, xyz_file_path, generate_xyz) where smiles is a validated SMILES or None,
+        xyz_file_path is a Path or None, and generate_xyz is True iff an coordinates should
+        be generated.
+    '''
+    if isinstance(structure_input, Path):
+        xyz_file_path = structure_input
+        if not xyz_file_path.exists():
+            raise FileNotFoundError(f'{xyz_file_path} does not exist.')
+        return (None, xyz_file_path, False)
+
+    if isinstance(structure_input, str):
+        candidate_path = Path(structure_input)
+
+        # Prefer "path" interpretation if it exists on disk
+        if candidate_path.exists():
+            return (None, candidate_path, False)
+
+        # Otherwise interpret as SMILES
+        smiles = confirm_defined_stereochemistry(structure_input)
+        return (smiles, None, True)
+
+    raise TypeError(f'structure_input must be a str or Path, got {type(structure_input)}')
 
 def run_kraken_calculation(kraken_id: str,
                            structure_input: str | Path,
@@ -192,16 +228,11 @@ def run_kraken_calculation(kraken_id: str,
     logger.debug('mol_dir: %s', mol_dir.absolute())
 
     # Check whether we're working with a smiles or path
-    if _str_is_smiles(structure_input):
-        smiles = structure_input
-        generate_xyz = True
-        xyz_file_path = None
-    else:
-        smiles = None
-        xyz_file_path = Path(structure_input)
-        if not xyz_file_path.exists():
-            raise FileNotFoundError(f'{xyz_file_path} does not exist.')
-        generate_xyz = False
+    smiles, xyz_file_path, generate_xyz = normalize_structure_input(structure_input=structure_input)
+
+    # Validate defined stereochemistry
+    if smiles is not None:
+        smiles = confirm_defined_stereochemistry(smiles=smiles)
 
     # Begin primary job loop here.
     for job in jobs:
@@ -215,7 +246,7 @@ def run_kraken_calculation(kraken_id: str,
         crest_calculation_dir.mkdir(exist_ok=True)
 
         # Structure generation
-        if generate_xyz and isinstance(smiles, str):           # if generate_xyz and (smiles is not None) and isinstance(smiles, str):
+        if generate_xyz and isinstance(smiles, str):
 
             # If we are requested to add Ni and Ni is not already in the smiles
             if job == 'Ni' and (metal_char not in smiles):

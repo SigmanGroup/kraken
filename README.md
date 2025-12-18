@@ -1,14 +1,16 @@
 # Kraken
-In 2024, the code for the Kraken workflow was refactored to streamline the addition of new ligands and improve portability.
+In 2024, the code for Kraken was refactored to streamline the addition of new monophosphiens and improve portability.
 This update uses modern software versions including xtb v6.4.0 and crest v2.12. In our testing, the new workflow performs
-similarly to the original workflow with several exceptions depending on the program versions used.
+similarly to the original with only minor differences.
 
-There are some differences between xTB versions that lead to different properties at the xTB-GFN2 level. However, we have
-compared the DFT properties of over 60 monophosphines to the original Kraken results. For a single monophosphine, the
-differences between the old and new properties may exceed 75% of the original value (mostly quadrant/octant volumes).
-However, these differences likely result from the stochastic nature of conformer searches.
+The different xTB versions lead to slightly different properties at the xTB-GFN2 level. We compared the DFT properties of
+over 60 monophosphines generated with both Kraken versions. For a single monophosphine, the differences between the old
+and new properties may exceed 75% of the original value (mostly quadrant/octant volumes). However, these differences likely
+result from stochasticity in the coformer search procedure.
 
 __A detailed report comparing 28 monophosphines from the original Kraken workflow is provided in the validation folder__
+
+
 ## Installation (Linux systems only)
 
 1.  Create a conda environment with the included environment yaml file.
@@ -27,18 +29,18 @@ conda activate kraken
    for xtb v6.6.0 and crest v2.12 worked in our testing. Alternatively, CHPC users can use `module load crest/2.12` to
    load xTB v6.4.0 and CREST v2.12.
 
-4. Place the precompiled binaries for xtb and crest somewhere on your PATH. Kraken will call these through subprocess.
+4. Place the precompiled binaries for xtb and crest somewhere on your PATH. Kraken will call these through subprocesses.
 
-5. Install the `kraken` package by navigating to the parent directory containing `setup.py` and running this command
+5. Install the `kraken` package by navigating to the parent directory containing `setup.py` and running this command:
 
 ```bash
 pip install .
 ```
+
+
 ## Example Usage (submission to CHPC for the Sigman group)
-These instructions are for Sigman group members to submit batches of calculations to the Sigman owner nodes on Notchpeak. For other
-users outside of the Sigman group, please see (and modify) the SLURM templates in the `kraken/slurm_templates` directory to
-accommodate your job scheduler __before installation__. Please note that special symbols exist in the SLURM templates that
-are substituted with actual values required by SLURM including `$KID`, `$NPROCS`, `$MEM`, and several others.
+These instructions are for Sigman group members to submit batches of calculations to the Sigman owner nodes on Notchpeak.
+For users outside of the Sigman group, see instructions in the next section.
 
 1. Format a `.csv` file that contains the columns SMILES, KRAKEN_ID, CHARGE, CONVERSION_FLAG:
 
@@ -51,7 +53,7 @@ are substituted with actual values required by SLURM including `$KID`, `$NPROCS`
 2. Run the example submission script with your requested inputs and configurations:
 
 ```bash
-example_conf_search_submission_script --csv small_molecules.csv --nprocs 8 --mem 16 --time 6 --calculation-dir ./data/ --debug
+example_conf_search_submission_script --csv input.csv --nprocs 8 --mem 16 --time 6 --calculation-dir ./data/ --debug
 ```
 
 3. After completion, inspect SLURM log files (`*.log`, `*.error`) for errors/warnings (`ERROR`, `WARNING`).
@@ -81,31 +83,56 @@ example_conf_search_submission_script --csv small_molecules.csv --nprocs 8 --mem
 6. Submit the DFT portion of the Kraken workflow:
 
 ```bash
-example_dft_submission_script --csv small_molecules.csv --nprocs 8 --mem 16 --time 6 --calculation-dir ./data/ --debug
+example_dft_submission_script --csv input.csv --nprocs 8 --mem 16 --time 6 --calculation-dir ./data/ --debug
 ```
 
 7. Check SLURM `.log` and `.error` files and raise an issue on this repo if necessary.
 
-## Example Usage (directly running on a compute node)
-Kraken can also be executed directly from the commandline. This can be useful if you wish to create your own wrapper scripts for submission to other HPC systems.
-Please not that running this script will call computationally intensive programs and should not be run on head nodes.
 
-1. Format a `.csv` file that contains your monophosphine SMILES string, KRAKEN_ID, and CONVERSION_FLAG:
+## Example usage (Users not using CHPC resources)
+You must create a submission script template similar to those in the `kraken/slurm_templates` directory to accommodate your
+SLURM scheduler. Please note that special symbols exist in the SLURM templates that are substituted with actual values required
+by the scheduler including `$KID`, `$NPROCS`, `$MEM`, and several others. Specify the template file using the `--slurm-template`
+argument for the submission scripts.
 
-    | KRAKEN_ID | SMILES           | CONVERSION_FLAG |
-    |-----------|------------------|-----------------|
-    | 5039      | CP(C)C           | 4               |
-    | 10596     | CP(C1=CC=CC=C1)C | 4               |
-    | ...       | ...              | ...             |
+1. Format a `.csv` file that contains the columns SMILES, KRAKEN_ID, CHARGE, CONVERSION_FLAG:
 
-2. Run the first Kraken script on a `.csv` file containing the columns `SMILES`, `KRAKEN_ID`, and `CONVERSION_FLAG`:
+    | KRAKEN_ID | SMILES           | CHARGE | CONVERSION_FLAG |
+    |-----------|------------------|--------|-----------------|
+    | 5039      | CP(C)C           |    0   |        4        |
+    | 10596     | CP(C1=CC=CC=C1)C |    0   |        4        |
+    | ...       | ...              |   ...  |       ...       |
+
+2. Run the example submission script with your requested inputs and configurations:
 
 ```bash
-run_kraken_conf_search -i ./data/input_file.csv --nprocs 4 --calculation-dir ./data/ --debug > kraken_conf_search.log
+example_conf_search_submission_script --csv input.csv --nprocs 8 --mem 16 --time 6 --calculation-dir ./data/ --debug --slurm-template ~/path/to/template.slurm
 ```
 
-3. After the script terminates, navigate to `./data/` to find the conformer search directories. Each `<KRAKEN_ID>/dft/` folder contains the `.com` files
-   for Gaussian16. You can run them directly in-place or follow the steps below if evaluating many ligands:<br>
+3. Continue with steps 4-7 from the previous procedure.
+
+
+## Example Usage (directly running on a compute node)
+Kraken can also be executed directly from the commandline. This can be useful if you wish to create your own wrapper scripts for submission to
+other HPC systems with different job schedulers. Please not that running this script will call computationally intensive programs and should
+not be run on head/login nodes.
+
+1. Format a `.csv` file that contains the columns SMILES, KRAKEN_ID, CHARGE, CONVERSION_FLAG:
+
+    | KRAKEN_ID | SMILES           | CHARGE | CONVERSION_FLAG |
+    |-----------|------------------|--------|-----------------|
+    | 5039      | CP(C)C           |    0   |        4        |
+    | 10596     | CP(C1=CC=CC=C1)C |    0   |        4        |
+    | ...       | ...              |   ...  |       ...       |
+
+2. Run the first Kraken script on the `.csv` file.
+
+```bash
+run_kraken_conf_search -i ./data/input.csv --nprocs 4 --calculation-dir ./data/ --debug > kraken_conf_search.log
+```
+
+3. After the script terminates, navigate to `./data/` to find the conformer search directories. Each `<KRAKEN_ID>/dft/` folder contains the `.com`
+   files for Gaussian16. You can run them directly in-place or follow the steps below if evaluating many ligands:<br>
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a. Move DFT input files to a centralized directory:<br>
 
@@ -193,7 +220,7 @@ __Extension and evaluation of the D4 London-dispersion model for periodic system
 Eike Caldeweyher, Jan-Michael Mewes, Sebastian Ehlert, Stefan Grimme. <br>
 *Phys*. *Chem*. *Chem*. *Phys*., __2020__, *22*, 8499-8512. DOI: [10.1039/D0CP00502A](https://doi.org/10.1039/d0cp00502a )
 
-## Known Issues
+## Known Issues and To-Do
 1.  The conformers generated by crest will differ between runs, so it can be difficult to compare xTB properties.
 2.  The original version of xTB often fails or produces incorrect results when using the --esp and --vipea flag. Newer versions have not failed in our testing.
 3.  The original code is designed to ignore descriptors that are assigned `None` as a result of xTB failure. This behavior is retained.
@@ -243,6 +270,3 @@ $CONVERSION_FLAG - Flag for method for generating coordinates from SMILES (defau
 Once you have created the new `.slurm` template, place it in the `/kraken/slurm_templates/` directory. You can then modify the `SLURM_TEMPLATE` variable in both
 `/kraken/cli/example_conf_search_submission_script.py` and `/kraken/cli/example_dft_submission_script.py` submission scripts to point to your new `.slurm` file.
 Finally, install the Kraken package using the instructions above. Your new `.slurm` file will be used instead of the one provided in the repository.
-
-## TO-DO
-1. Refactor SLURM_TEMPLATE usage in the submission scripts to allow users to change the way Kraken CLI scripts interact with HPC job schedulers.
