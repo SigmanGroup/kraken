@@ -21,7 +21,7 @@ from importlib.resources import files
 
 from .run_kraken_conf_search import _parse_csv, _correct_kraken_id
 
-SLURM_TEMPLATE = files("kraken") / "slurm_templates" / "conf_search_slurm_template.slurm"
+SLURM_TEMPLATE = files("kraken") / "slurm_templates" / "conf_search_slurm_template_np_owner.slurm"
 
 logger = logging.getLogger(__name__)
 
