@@ -1346,15 +1346,17 @@ def _correct_kraken_id(kid: int | str) -> str:
 
 def confirm_defined_stereochemistry(smiles: str) -> str:
     '''
-    Ensures a SMILES string has defined stereochemistry
+    Ensures a SMILES string has defined stereochemistry on carbon atoms
     unless there is only one stereogenic center.
 
     The SMILES is accepted if either:
-        (1) All potential stereogenic centers configuration are specified
-        (2) There is exactly one point stereogenic center
+        (1) All potential stereogenic centers on carbon atoms configuration are specified
+        (2) There is exactly one point stereogenic center on carbon atoms
 
     Otherwise, the SMILES is rejected because repeated 3D generation could yield
     different diastereomers.
+
+    This function will ignore potential stereochemistry detected on heteroatoms.
 
     Parameters
     ----------
@@ -1381,11 +1383,18 @@ def confirm_defined_stereochemistry(smiles: str) -> str:
     # Count total potential stereogenic centers
     n_total = len(stereo_infos)
 
+    # Get the atomic symbols
+    symbols = [mol.GetAtomWithIdx(info.centeredOn).GetSymbol() for info in stereo_infos]
+
+    logger.debug('There are %d total stereocenters detected by RDKit in the molecule on atoms %s.', n_total, str(symbols))
+    logger.debug('There are %d total carbon stereocenters in the molecule.', len([x for x in symbols if x == 'C']))
+
     # Count how many are not specified (Unspecified or Unknown)
     n_unspecified = 0
     for info in stereo_infos:
         if info.specified != rdchem.StereoSpecified.Specified:
-            n_unspecified += 1
+            if mol.GetAtomWithIdx(info.centeredOn).GetSymbol() == 'C':
+                n_unspecified += 1
 
     # Accept if nothing is ambiguous
     if n_unspecified == 0:
@@ -1397,16 +1406,22 @@ def confirm_defined_stereochemistry(smiles: str) -> str:
         # If the only undefined stereogenic center is a double bond (E/Z),
         # random assignment gives diastereomers
         if stereo_infos[0].type == rdchem.StereoType.Bond_Double:
-            raise ValueError(
-                f'SMILES has ambiguous double bond stereochemistry: {smiles!r}'
-            )
+            raise ValueError(f'SMILES has ambiguous double bond stereochemistry: {smiles!r}')
 
         logger.warning('SMILES %s has an undefined stereocenter.', smiles)
 
         return sanitize_smiles(smiles=smiles)
 
     # Otherwise, ambiguity >=2 stereogenic centers can generate diastereomers
-    raise ValueError(f'SMILES has {n_unspecified} ambiguous stereogenic centers out of {n_total}. Specify absolute configuration.')
+    logger.error('SMILES %s has %d ambiguous stereogenic centers out of %d. Specify absolute configuration.', smiles, n_unspecified, n_total)
+
+    for info in stereo_infos:
+        logger.error(str(info.type))
+        logger.error(str(info.centeredOn))
+        logger.error(str(info.specified))
+        logger.error(str(info.controllingAtoms))
+
+    raise ValueError(f'SMILES {smiles} has {n_unspecified} ambiguous stereogenic centers out of {n_total}. Specify absolute configuration.')
 
 if __name__ == "__main__":
     #logfile = Path('/home/sigmanuser/James-Kraken/calculations_Ni/2158_Ni/crest.log')

@@ -24,6 +24,9 @@ UNDF_DOUBLE_BOND = 'CC(C)C=CP(c1ccccc1)c1ccccc1'
 # One stereogenic center in total
 UNDF_POINT_STEREOCENTER = 'CCC(C)P(c1ccccc1)c1ccccc1'
 
+# RDKit detected stereochemistry at heteroatoms
+HETEROATOM_STEREOCHEM = 'NCP(CCCCS(=O)(=O)O)c1ccccc1'
+
 @pytest.mark.parametrize(
     "smiles",
     [
@@ -57,6 +60,7 @@ def test_confirm_defined_stereochemistry_rejects_expected(smiles: str) -> None:
     [
         ZERO_UNDEFINED_POINT_STEREOCENTERS,
         UNDF_POINT_STEREOCENTER,
+        HETEROATOM_STEREOCHEM
     ],
 )
 
