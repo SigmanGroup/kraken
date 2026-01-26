@@ -212,9 +212,9 @@ The code for this updated workflow was adapted from the original Kraken code. Up
 We have included a comparison between the descriptors from the original Kraken publications and the new workflow for approximately 30 monophosphines in the validation/ folder.
 
 ## Including new templates for submission to HPC clusters
-If you wish to submit batches of Kraken calculations (either the conformer search or the DFT portion of the workflow) to other systems that are not the Notchpeak Sigman owner nodes,
-you will need to create additional `.slurm` templates that are compatible with `/kraken/cli/example_conf_search_submission_script.py` and `/kraken/cli/example_dft_submission_script.py`.
-The slurm scripts should contain the call to `run_kraken_conf_search` and `run_kraken_dft` along with placeholders for the following variables.
+If you wish to submit batches of Kraken calculations (either the conformer search or the DFT portion of the workflow) to other systems, you must
+create additional `.slurm` templates that are compatible with `/kraken/cli/submit_conf_search.py` and `/kraken/cli/submit_dft_calcs.py`. The
+slurm scripts should contain the call to `run_kraken_conf_search` and `run_kraken_dft` along with placeholders for the following variables.
 
 $TIME - Time in hours for the jobs <br>
 $NPROCS - Number of processors to request for the job <br>
@@ -224,6 +224,4 @@ $CALCDIR - Calculation directory for the job <br>
 $SMILES - Placeholder for the SMILES string of the monophosphines (only required for conf search portion) <br>
 $CONVERSION_FLAG - Flag for method for generating coordinates from SMILES (default should be 4, only for conf search portion) <br>
 
-Once you have created the new `.slurm` template, place it in the `/kraken/slurm_templates/` directory. You can then modify the `SLURM_TEMPLATE` variable in both
-`/kraken/cli/example_conf_search_submission_script.py` and `/kraken/cli/example_dft_submission_script.py` submission scripts to point to your new `.slurm` file.
-Finally, install the Kraken package using the instructions above. Your new `.slurm` file will be used instead of the one provided in the repository.
+Once you have created the new `.slurm` template, you can use the submission scripts (`submit_conf_search.py`) and specify the `--slurm-template` argument.
