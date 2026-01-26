@@ -2,7 +2,8 @@
 #SBATCH --partition=sigman-shared-kp
 #SBATCH --account=sigman-kp
 #SBATCH --time=$TIME:00:00
-#SBATCH --ntasks=$NPROCS
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=$NPROCS
 #SBATCH --nodes=1
 #SBATCH --mem=$MEMG
 #SBATCH -o kraken_conf_$KID-%j.log

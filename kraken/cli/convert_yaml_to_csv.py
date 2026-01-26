@@ -56,7 +56,15 @@ def get_args() -> argparse.Namespace:
                         required=True,
                         type=Path,
                         help='Parent directory that contains multiple <kraken_id> dirs.\n\n',
-                        metavar='STR')
+                        metavar='DIR')
+
+    parser.add_argument('--skip-kraken-ids',
+                        dest='skip_kraken_ids',
+                        required=False,
+                        nargs='+',
+                        type=str,
+                        help='Skip Kraken IDs that contain these substrings.(OPTIONAL)\n\n',
+                        metavar='DIR')
 
     parser.add_argument('--debug', action='store_true', help='Prints debug information\n\n')
 
@@ -186,9 +194,6 @@ def main():
     # Get arguments
     args = get_args()
 
-    # Set up logging
-    logger = logging.getLogger(__name__)
-
     logging.basicConfig(
         level=logging.DEBUG if args.debug else logging.INFO,
         format='[%(levelname)-5s - %(asctime)s] [%(module)s] %(message)s',
@@ -201,6 +206,10 @@ def main():
     # Get a list of directories
     #TODO Write a function that validates if we have a legit kraken_id
     directories = [x for x in parent_dir.glob('*') if x.is_dir() and len(x.stem) == 8]
+
+    if args.skip_kraken_ids is not None:
+        to_skip = [str(x) for x in args.skip_kraken_ids]
+        directories = [x for x in directories if str(x.stem) not in to_skip]
 
     list_of_series = []
 
@@ -278,6 +287,8 @@ def main():
 
             # Get the entry with the greatest count
             most_common_smiles, count = counts.most_common(1)[0]
+
+            logger.debug(str(counts))
 
             # Sanity check
             if len(counts) != 1:

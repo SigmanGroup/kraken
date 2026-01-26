@@ -6,128 +6,190 @@
 # Date: 2025-04-10
 
 '''
-Simple script for submitting Kraken conformer
-searches to HPC systems
+Example submission script for submitting a batch
+of Kraken conformer searches
 '''
 
 import re
 import sys
-import copy
 import logging
 import argparse
 import subprocess
 
 from pathlib import Path
+from importlib.resources import files
 
-import pandas as pd
+from .run_kraken_conf_search import _parse_csv, _correct_kraken_id
 
-# Template SLURM submission script with placeholders for submission
-DEFAULT_SLURM_TEMPLATE = Path(__file__).parent.parent / 'scripts/kraken_conf_search.sh'
+SLURM_TEMPLATE = files("kraken") / "slurm_templates" / "conf_search_slurm_template_np_owner.slurm"
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='[%(levelname)-5s - %(asctime)s] [%(module)s] %(message)s',
-    datefmt='%m/%d/%Y:%H:%M:%S',  # Correct way to format the date
-    handlers=[logging.StreamHandler(sys.stdout)]
-)
+logger = logging.getLogger(__name__)
 
-DESCRIPTION = r"""
-
-
-               ╔══════════════════════════════════════╗
-               ║   | |/ / _ \  /_\ | |/ / __| \| |    ║
-               ║   | ' <|   / / _ \| ' <| _|| .` |    ║
-               ║   |_|\_\_|_\/_/ \_\_|\_\___|_|\_|    ║
-               ╚══════════════════════════════════════╝
+DESCRIPTION = r'''
+╔══════════════════════════════════════╗
+║   | |/ / _ \  /_\ | |/ / __| \| |    ║
+║   | ' <|   / / _ \| ' <| _|| .` |    ║
+║   |_|\_\_|_\/_/ \_\_|\_\___|_|\_|    ║
+╚══════════════════════════════════════╝
+Kolossal viRtual dAtabase for moleKular dEscriptors
+of orgaNophosphorus ligands.
 
 
-        Kolossal viRtual dAtabase for moleKular dEscriptors
-                     of orgaNophosphorus ligands.
+CLI SCRIPT
 
-                              CLI SCRIPT
+This is an example CLI script for submitting a batch
+of Kraken conformer search calculations to the Sigman
+group Notchpeak owner nodes.
+'''
 
-              """
+DESCRIPTION = '\n'.join(line.center(80) for line in DESCRIPTION.strip('\n').split('\n'))
 
 def get_args() -> argparse.Namespace:
     '''Gets the arguments for running Kraken'''
 
     parser = argparse.ArgumentParser(
         description=DESCRIPTION,
-        formatter_class=lambda prog: argparse.RawTextHelpFormatter(prog, 2, 80),
+        formatter_class=lambda prog: argparse.RawTextHelpFormatter(prog, 2, 40),
         allow_abbrev=False,
-        usage=argparse.SUPPRESS,
         add_help=False)
 
-    parser.add_argument('-h',
-                        '--help',
+    parser.add_argument('-h', '--help',
                         action='help',
                         default=argparse.SUPPRESS,
                         help='Show this help message and exit.\n\n')
 
-    parser.add_argument('-i', '--input',
-                        dest='input',
+    parser.add_argument('-c', '--csv',
+                        dest='csv',
                         required=True,
-                        type=Path,
-                        help='Input .csv file',
-                        metavar='CSV')
+                        help='CSV file that contains the required input.\n\n',
+                        metavar='STR')
 
-    parser.add_argument('-c', '--calcdir',
-                        dest='calcdir',
-                        required=False,
-                        type=Path,
-                        default=Path.cwd(),
-                        help='Directory in which to submit the jobs',
-                        metavar='CSV')
+    parser.add_argument('-n', '--nprocs',
+                        dest='nprocs',
+                        default=4,
+                        help='Number of processors to request\n\n',
+                        metavar='INT')
+
+    parser.add_argument('-m', '--mem',
+                        dest='mem',
+                        default=8,
+                        help='Amount of memory in GB to request\n\n',
+                        metavar='INT')
+
+    parser.add_argument('-t', '--time',
+                        dest='time',
+                        default=8,
+                        help='Time requested in hours\n\n',
+                        metavar='INT')
+
+    parser.add_argument('--slurm-template',
+                        dest='slurm_template',
+                        help='Formatted SLURM template with placeholders\n\n',
+                        metavar='STR')
+
+    parser.add_argument('--calculation-dir',
+                        dest='calc_dir',
+                        default='./data/',
+                        help='Path to the directory that will contain the results of Kraken\n\n',
+                        metavar='DIR')
+
+    parser.add_argument('--debug', action='store_true', help='Prints debug information\n\n')
 
     args = parser.parse_args()
 
-    # Do some path checking
-    args.input = Path(args.input)
-    if not args.input.exists():
-        raise FileNotFoundError(f'{args.input.absolute()} does not exist.')
+    args.csv = Path(args.csv)
+    if not args.csv.exists():
+        raise FileNotFoundError(f'Could not locate {args.csv.absolute()} does not exist.')
 
-    args.calcdir = Path(args.calcdir)
-    if not args.calcdir.exists():
-        raise FileNotFoundError(f'{args.calcdir.absolute()} does not exist.')
-
-    if args.input.suffix != '.csv':
-        raise ValueError(f'Only .csv files can be used with this script not {args.input.suffix}')
+    if args.slurm_template is not None:
+        args.slurm_template = Path(args.slurm_template)
+        if not args.slurm_template.exists():
+            raise FileNotFoundError(f'Could not locate {args.slurm_template.absolute()} does not exist.')
 
     return args
 
-def main():
+def write_job_file(kraken_id: str,
+                   smiles: str,
+                   conversion_flag: int,
+                   charge: int,
+                   directory: Path,
+                   time: int,
+                   destination: Path,
+                   template: Path,
+                   nprocs: int,
+                   mem: int) -> Path:
+    '''
+    Writes the job file
+    '''
+    with open(template, 'r', encoding='utf-8') as infile:
+        text = infile.read()
 
-    # Get the arguments
+    text = re.sub(r'\$KID', str(kraken_id), text)
+    text = re.sub(r'\$SMILES', str(smiles), text)
+    text = re.sub(r'\$CALCDIR', str(directory.absolute()), text)
+    text = re.sub(r'\$CHARGE', str(charge), text)
+    text = re.sub(r'\$CONVERSION_FLAG', str(conversion_flag), text)
+    text = re.sub(r'\$NPROCS', str(nprocs), text)
+    text = re.sub(r'\$MEM', str(mem), text)
+    text = re.sub(r'\$TIME', str(time), text)
+    text = re.sub(r'\$DIR', str(directory.absolute()), text)
+
+    with open(destination, 'w', encoding='utf-8') as o:
+        o.write(text)
+
+    return destination
+
+def main() -> None:
+    '''Main entry point'''
+
+    # Get the args
     args = get_args()
 
-    # Read in the df
-    df = pd.read_csv(args.input, dtype={'KRAKEN_ID': str})
+    logging.basicConfig(
+        level=logging.DEBUG if args.debug else logging.INFO,
+        format='[%(levelname)-5s - %(asctime)s] [%(module)s] %(message)s',
+        datefmt='%m/%d/%Y:%H:%M:%S',
+        handlers=[logging.StreamHandler(sys.stdout)]
+    )
 
-    with open(DEFAULT_SLURM_TEMPLATE, 'r', encoding='utf-8') as _:
-        slurm_template = _.read()
+    # Get the input file
+    input_file = Path(args.csv)
 
-    # Iterate through all the smiles
-    for i, row in df.iterrows():
+    # Get the slurm template if specified
+    if args.slurm_template is not None:
+        slurm_template = Path(args.slurm_template)
+    else:
+        slurm_template = Path(SLURM_TEMPLATE)
 
-        # Get the important things we'll use in the script
-        smiles = row['SMILES']
-        kraken_id = str(row['KRAKEN_ID'])
-        calcdir = args.calcdir
+    ids, inputs, conversion_flags, charges = _parse_csv(input_file)
+    ids = [_correct_kraken_id(x) for x in ids]
+    charges = [int(x) for x in charges]
 
-        # Copy the slurm template
-        text = copy.deepcopy(slurm_template)
+    calc_dir = Path(args.calc_dir)
+    calc_dir.mkdir(exist_ok=True)
 
-        text = re.sub(r'\$KRAKENID', kraken_id, text)
-        text = re.sub(r'\$SMILES', smiles, text)
-        text = re.sub(r'\$CALCDIR', str(calcdir.absolute()), text)
+    # Iterate over the input
+    for id, smiles, conversion_flag, charge in zip(ids, inputs, conversion_flags, charges):
+        dest = Path(f'./{id}_conf.slurm')
 
-        slurm_job_file = Path('.') / f'{kraken_id}.slurm'
+        # Write the jobfile
+        jobfile = write_job_file(kraken_id=id,
+                                 smiles=smiles,
+                                 conversion_flag=conversion_flag,
+                                 charge=charge,
+                                 directory=calc_dir,
+                                 time=args.time,
+                                 destination=dest,
+                                 template=slurm_template,
+                                 nprocs=args.nprocs,
+                                 mem=args.mem)
 
-        with open(slurm_job_file, 'w', encoding='utf-8') as o:
-            o.write(text)
-
-        subprocess.run(args=['sbatch', str(slurm_job_file.name)], cwd=slurm_job_file.parent, check=False)
+        # Submit it to SLURM
+        subprocess.run(args=['sbatch', jobfile.name], cwd=jobfile.parent, check=False)
 
 if __name__ == "__main__":
-    raise NotImplementedError('This script is unused')
     main()
+
+
+
+

@@ -1,9 +1,10 @@
 #!/bin/bash
-#SBATCH --partition=sigman-shared-np
+#SBATCH --partition=sigman-np
 #SBATCH --account=sigman-np
 #SBATCH --qos=sigman-low-np
 #SBATCH --time=$TIME:00:00
-#SBATCH --ntasks=$NPROCS
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=$NPROCS
 #SBATCH --nodes=1
 #SBATCH --mem=$MEMG
 #SBATCH -o kraken_dft_$KID-%j.log

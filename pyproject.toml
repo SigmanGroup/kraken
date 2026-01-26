@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kraken"
-version = "0.1"
+version = "0.2"
 requires-python = ">=3.9"
 
 [project.scripts]
@@ -12,8 +12,10 @@ extract_dft_files = "kraken.cli.extract_dft_files:main"
 return_dft_files = "kraken.cli.return_dft_files:main"
 run_kraken_dft = "kraken.cli.run_kraken_dft:main"
 run_kraken_conf_search = "kraken.cli.run_kraken_conf_search:main"
-example_conf_search_submission_script = "kraken.cli.example_conf_search_submission_script:main"
-example_dft_submission_script = "kraken.cli.example_dft_submission_script:main"
+submit_conf_search = "kraken.cli.submit_conf_search:main"
+submit_dft_calcs = "kraken.cli.submit_dft_calcs:main"
+yaml_to_csv = "kraken.cli.yaml_to_csv:main"
+yaml_to_sdf = "kraken.cli.yaml_to_sdf:main"
 
 [tool.setuptools]
 packages = ["kraken", "kraken.cli"]
