@@ -1386,8 +1386,11 @@ def confirm_defined_stereochemistry(smiles: str) -> str:
     # Get the atomic symbols
     symbols = [mol.GetAtomWithIdx(info.centeredOn).GetSymbol() for info in stereo_infos]
 
+    # Get total carbon stereocenters
+    n_carbon_stereocenters = len([x for x in symbols if x == 'C'])
+
     logger.debug('There are %d total stereocenters detected by RDKit in the molecule on atoms %s.', n_total, str(symbols))
-    logger.debug('There are %d total carbon stereocenters in the molecule.', len([x for x in symbols if x == 'C']))
+    logger.debug('There are %d total carbon stereocenters in the molecule.', n_carbon_stereocenters)
 
     # Count how many are not specified (Unspecified or Unknown)
     n_unspecified = 0
@@ -1401,6 +1404,7 @@ def confirm_defined_stereochemistry(smiles: str) -> str:
         return sanitize_smiles(smiles=smiles)
 
     # Accept only if the molecule has exactly one stereogenic center and it is unspecified
+    # This accounts for the double bond
     if n_total == 1 and n_unspecified == 1:
 
         # If the only undefined stereogenic center is a double bond (E/Z),
@@ -1410,6 +1414,11 @@ def confirm_defined_stereochemistry(smiles: str) -> str:
 
         logger.warning('SMILES %s has an undefined stereocenter.', smiles)
 
+        return sanitize_smiles(smiles=smiles)
+
+    # Accept only one carbon stereocenter
+    if n_carbon_stereocenters == 1 and n_unspecified == 1:
+        logger.warning('SMILES %s has an undefined carbon stereocenter.', smiles)
         return sanitize_smiles(smiles=smiles)
 
     # Otherwise, ambiguity >=2 stereogenic centers can generate diastereomers
