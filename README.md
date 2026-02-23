@@ -107,7 +107,7 @@ submit_conf_search --csv input.csv --nprocs 8 --mem 16 --time 6 --calculation-di
 
 ## Running directly on a compute node
 Kraken can also be executed directly from the commandline. This can be useful if you wish to create your own wrapper scripts for submission to
-other HPC systems. Please not that running this script will call computationally intensive programs and should not be run on head/login nodes.
+other HPC systems. Please note that running this script will call computationally intensive programs and should not be run on head/login nodes.
 
 1. Format a `.csv` file that contains the columns SMILES, KRAKEN_ID, CHARGE, CONVERSION_FLAG (see above)
 
