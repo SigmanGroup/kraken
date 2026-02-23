@@ -84,6 +84,39 @@ def write_single_sdf_file(mol,
     with Chem.SDWriter(str(destination.absolute())) as w:
         w.write(mol)
 
+def combine_sdf_files(sdf_files: list[Path], out_sdf: Path) -> None:
+    '''
+    Combine SDF files by reading them all and writing one output file.
+
+    Parameters
+    ----------
+    sdf_files: list[Path]
+        List of SDF file paths to concatenate in order.
+
+    out_sdf: Path
+        Output SDF file path.
+
+    Returns
+    -------
+    None
+    '''
+    # Ensure output directory exists
+    out_sdf.parent.mkdir(parents=True, exist_ok=True)
+
+    # Open the file to which we will write
+    with open(out_sdf, 'w', encoding='utf-8', newline='\n') as out_f:
+
+        # Iterate
+        for sdf_file in sdf_files:
+
+            # Get the text
+            text = sdf_file.read_text(encoding='utf-8')
+            out_f.write(text)
+
+            # Prevent the next file from gluing onto the last line
+            if text and not text.endswith('\n'):
+                out_f.write('\n')
+
 def main():
     '''
     Main function
@@ -103,17 +136,20 @@ def main():
 
     confdata_file = Path(args.file)
 
+    # Get the kraken ID (<kraken_id>_confdata.yml)
+    KID = confdata_file.stem.split('_')[0]
+
     # Define path for saving SDF files
     xyz_folder = confdata_file.parent / 'converted_xyz_files'
     sdf_folder = confdata_file.parent / 'converted_sdf_files'
     xyz_folder.mkdir(exist_ok=True)
     sdf_folder.mkdir(exist_ok=True)
 
-    files = sorted([x for x in Path('./initial_data/DFT_yamls/').glob('*_confdata.yml')])
-
     # Read in file and get elements, coords, and conmat
     with open(confdata_file, 'r', encoding='utf-8') as f:
         data = yaml.load(f, Loader=Loader)
+
+    written_sdf_files = []
 
     # Iterate through the conformers, conformer_name is the stem of the file
     for conformer_name, conformer_data_dictionary in data.items():
@@ -134,6 +170,24 @@ def main():
         sdf_file = sdf_folder / f'{conformer_name}.sdf'
         cmd = ['obabel', '-ixyz', str(xyz_file.absolute()), '-osdf', f'-O{sdf_file.absolute()}']
         subprocess.run(args=cmd, cwd=sdf_folder, check=False)
+
+        # Change the first line (title line) to the conformer name
+        with open(sdf_file, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+
+        if not lines:
+            logger.error('No lines were found in %s', str(sdf_file.absolute()))
+            continue
+
+        lines[0] = f'{conformer_name}\n'
+
+        with open(sdf_file, 'w', encoding='utf-8') as o:
+            o.writelines(lines)
+
+        written_sdf_files.append(sdf_file)
+
+    # Combine all of the xyz and sdf files to a complete
+    combine_sdf_files(sdf_files=written_sdf_files, out_sdf=Path(confdata_file.parent / f'{KID}_dft_conformers.sdf'))
 
 if __name__ == "__main__":
     main()

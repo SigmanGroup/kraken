@@ -81,6 +81,14 @@ def get_args() -> argparse.Namespace:
                         help='Destination to place the files.\n\n',
                         metavar='DIR')
 
+    parser.add_argument('--skip-kraken-ids',
+                        dest='skip_kraken_ids',
+                        required=False,
+                        nargs='+',
+                        type=str,
+                        help='Skip Kraken IDs that contain these substrings. (OPTIONAL)\n\n',
+                        metavar='INT')
+
     args = parser.parse_args()
 
     # Do some path checking
@@ -106,6 +114,10 @@ def main():
     args = get_args()
 
     calc_dirs = sorted([Path(x) / 'dft' for x in args.input.glob('*') if x.is_dir()])
+
+    # Filter out any directories the user wants to skip
+    if args.skip_kraken_ids:
+        calc_dirs = [x for x in calc_dirs if not any(skip_id in x.parent.name for skip_id in args.skip_kraken_ids)]
 
     destination = Path(args.destination)
 
