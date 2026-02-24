@@ -87,6 +87,12 @@ submit_dft_calcs --csv input.csv --nprocs 8 --mem 16 --time 6 --calculation-dir 
 
 7. Check SLURM `.log` and `.error` files and raise an issue on this repo if necessary.
 
+8. Convert the resulting yaml files into a convenient spreadsheet.
+
+```bash
+yaml_to_csv -d ./data/ --debug
+```
+
 
 ## Creating custom submission templates
 To submit batches of calculations to different HPC systems, you must create a submission script template similar to those in
@@ -154,7 +160,6 @@ run_kraken_dft.py --kid 90000001 --dir ./data/ --nprocs 4 --force > kraken_dft_p
 │   └── selected_conformers
 └── xtb_scr_dir
 ```
-
 
 ## Citations
 Please cite the original kraken publication if you used this software. The executables for Multiwfn, dftd3, and dftd4 are included

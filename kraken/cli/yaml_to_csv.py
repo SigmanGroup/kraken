@@ -225,6 +225,14 @@ def main():
         confdata_yml = data_dir / f'{kraken_id}_confdata.yml'
         data_yml = data_dir / f'{kraken_id}_data.yml'
 
+        if not confdata_yml.exists():
+            logger.error('Could not locate %s. Skipping %s.', confdata_yml.absolute(), kraken_id)
+            continue
+
+        if not data_yml.exists():
+            logger.error('Could not locate %s. Skipping %s.', data_yml.absolute(), kraken_id)
+            continue
+
         # Get an intial pd.Series which is missing the SMILES
         series = convert_yml_to_series(data_yml,
                                        kraken_id=kraken_id)
@@ -300,6 +308,11 @@ def main():
         list_of_series.append(series)
 
     df = pd.DataFrame(list_of_series)
+
+    if len(df) == 0:
+        logger.error('Shape of final DataFrame is %s. Did your calculations complete successfully?', str(df.shape))
+        exit(1)
+
     df.set_index('name', inplace=True, drop=True)
     print(df)
 
