@@ -1430,6 +1430,7 @@ def confirm_defined_stereochemistry(smiles: str) -> str:
         logger.error(str(info.specified))
         logger.error(str(info.controllingAtoms))
 
+    logger.error('SMILES %s has %d ambiguous stereogenic centers out of %d. Specify absolute configuration.', smiles, n_unspecified, n_total)
     raise ValueError(f'SMILES {smiles} has {n_unspecified} ambiguous stereogenic centers out of {n_total}. Specify absolute configuration.')
 
 if __name__ == "__main__":
