@@ -90,10 +90,10 @@ rcov = {
     }
 
 def get_ligand_indices(coords: NDArray,
-                       elements: NDArray,
+                       elements: NDArray | list[str],
                        P_index: int,
                        smiles: str,
-                       metal_char: str):
+                       metal_char: str) -> tuple:
     '''
     Returns mask then bool?
     '''

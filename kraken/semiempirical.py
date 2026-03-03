@@ -318,6 +318,27 @@ def run_crest(file: Path,
 
     return (crest_done, xtb_done, coords_all_used, elements_all_used, boltzmann_data_used, conf_indeces_used, electronic_properties_conformers, [total_crest_time, time_xtb_sterimol])
 
+def _crest_log_has_topology_change_error(crest_log: Path) -> bool:
+    '''
+    Checks if the output from a CREST calculation contains errors associated
+    with a change in topology. If a topology error is detected, the function
+    returns True. Otherwise, returns False.
+
+    This error frequently results from bad input geometries produced by RDKit
+    or openbabel. These geometries change substantially once optimized at a
+    semiempirical level of theory. Check in the CREST input structure to see
+    if the geometry is reasonable. If it is not, use a different structure
+    generation method.
+    '''
+
+    with open(crest_log, 'r', encoding='utf-8') as infile:
+        text = infile.read()
+
+    if 'Change in topology detected'.casefold() in text.casefold():
+        return True
+
+    return False
+
 def get_crest_results(file: Path):
     '''
     Extracts CREST results from CRESt output log
@@ -337,12 +358,21 @@ def get_crest_results(file: Path):
     with open(CREST_LOG, 'r') as infile:
         text = infile.read()
 
+    # Check if CREST reports a normal termination
     if not 'CREST terminated normally.' in text:
-        raise ValueError(f'CREST did not complete successfully at {CREST_LOG.absolute()}.')
+
+        # Check for specific errors and inform the user
+        if _crest_log_has_topology_change_error(crest_log=CREST_LOG):
+            logger.error('Topology change upon optimization in %s', CREST_LOG.absolute())
+            logger.error('The generated structure may be poorly constructed.')
+            logger.error('Use a different CONVERSION_FLAG to change the structure generation method.')
+            raise ValueError(f'CREST reported a change in topology error in {CREST_LOG.absolute()}.')
+
+        raise ValueError(f'CREST did not complete successfully in {CREST_LOG.absolute()}.')
 
     # Do some additionally testing if CREST completed
     for _crest_test_item in [METADYNAMICS_1, OPTIM, NORMMD_1]:
-        logger.warning('%s exists and indicates an incomplete CREST job', _crest_test_item.absolute())
+        logger.warning('%s exists and may indicate an incomplete CREST job', _crest_test_item.absolute())
 
     # Read in all conformers
     coords_all, elements_all = readXYZs(CREST_CONFORMERS)
@@ -415,8 +445,5 @@ def read_crest_log(crest_log_file: Path):
 
             if "Erel/kcal     Etot      weight/tot conformer  set degen    origin" in line:
                 read=True
-
-        #for i in data:
-        #    print(i)
 
     return data
