@@ -16,6 +16,7 @@ submit_conf_search = "kraken.cli.submit_conf_search:main"
 submit_dft_calcs = "kraken.cli.submit_dft_calcs:main"
 yaml_to_csv = "kraken.cli.yaml_to_csv:main"
 yaml_to_sdf = "kraken.cli.yaml_to_sdf:main"
+validate_kraken_dir = "kraken.cli.validate_kraken_dir:main"
 
 [tool.setuptools]
 packages = ["kraken", "kraken.cli"]

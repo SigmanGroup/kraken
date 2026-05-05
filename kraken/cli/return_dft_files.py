@@ -79,7 +79,7 @@ def get_args() -> argparse.Namespace:
                         required=False,
                         nargs='+',
                         type=str,
-                        help='(UNUSED) Skip Kraken IDs that contain these substrings. (OPTIONAL)\n\n',
+                        help='Skip Kraken IDs that contain these substrings. (OPTIONAL)\n\n',
                         metavar='DIR')
 
     parser.add_argument('--dry',

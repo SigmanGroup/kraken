@@ -93,6 +93,14 @@ def get_args() -> argparse.Namespace:
                         help='Formatted SLURM template with placeholders\n\n',
                         metavar='STR')
 
+    parser.add_argument('--skip-kraken-ids',
+                        dest='skip_kraken_ids',
+                        required=False,
+                        nargs='+',
+                        type=str,
+                        help='Skip Kraken IDs that contain these substrings. (OPTIONAL)\n\n',
+                        metavar='DIR')
+
     parser.add_argument('--force',
                         action='store_true',
                         help='Forces the recalculation instead of reading potentially incomplete results from file\n\n')
@@ -176,6 +184,12 @@ def main() -> None:
 
     # Iterate over the input
     for id, smiles, conversion_flag, charge in zip(ids, inputs, conversion_flags, charges):
+
+        if args.skip_kraken_ids is not None:
+            if str(id) in args.skip_kraken_ids:
+                logger.info('Skipping %s', id)
+                continue
+
         dest = Path(f'./{id}_dft.slurm')
 
         # Write the jobfile

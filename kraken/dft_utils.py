@@ -89,8 +89,7 @@ def get_filecont(file: Path) -> list[str]:
     # Return failure notice if no successful termination found
     return ['failed or incomplete job']
 
-def make_fchk_file(file: Path,
-                   dest: Path) -> Path:
+def make_fchk_file(file: Path) -> Path:
     '''
     Converts a Gaussian binary checkpoint (.chk) file into a formatted checkpoint (.fchk) file
     using the `formchk` utility.
@@ -123,7 +122,7 @@ def make_fchk_file(file: Path,
 
     cmd = ['formchk', str(file.name), str(file.with_suffix('.fchk').name)]
 
-    proc = subprocess.run(args=cmd, cwd=file.parent, check=False)
+    proc = subprocess.run(args=cmd, cwd=file.parent, stdout=subprocess.PIPE, check=False)
 
     if proc.returncode != 0:
         raise ValueError(f'The return code for formchk for file {file.name} was not 0')

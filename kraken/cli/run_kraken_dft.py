@@ -16,6 +16,7 @@ import shutil
 import logging
 import argparse
 import itertools
+import multiprocessing
 
 from yaml import CLoader as Loader
 from yaml import CDumper as Dumper
@@ -1002,6 +1003,14 @@ def run_end(kraken_id: str,
     # Get all the logfiles
     logfiles = sorted([x for x in dft_folder.glob(f'{kraken_id}*.log') if x.is_file()])
 
+    # Make a list of .fchk files to make in parallel
+    if force_recalculation:
+        chks_to_convert_fchks = [x.with_suffix('.chk') for x in logfiles]
+    else:
+        chks_to_convert_fchks = [x.with_suffix('.chk') for x in logfiles if not x.with_suffix('.fchk').exists()]
+    with multiprocessing.Pool() as p:
+        results = p.starmap(make_fchk_file, zip(chks_to_convert_fchks))
+
     # Make directories to hold the many files
     for logfile in logfiles:
         conf_directory = dft_folder / logfile.stem
@@ -1289,6 +1298,8 @@ def run_end(kraken_id: str,
     erel_df.to_csv(relative_energy_csv, sep=";")
 
     logger.info('Finished writing DFT data for Kraken ID %s', kraken_id)
+
+    logger.info('KRAKEN TERMINATED NORMALLY')
 
 def main():
     '''Main entrypoint'''

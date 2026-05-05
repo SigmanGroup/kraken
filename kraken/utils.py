@@ -24,6 +24,7 @@ import scipy.linalg as scli
 
 from rdkit import Chem
 from rdkit.Chem import rdchem
+from rdkit.Chem.EnumerateStereoisomers import EnumerateStereoisomers, StereoEnumerationOptions
 
 logger = logging.getLogger(__name__)
 
@@ -1357,6 +1358,7 @@ def confirm_defined_stereochemistry(smiles: str) -> str:
     different diastereomers.
 
     This function will ignore potential stereochemistry detected on heteroatoms.
+    This function will ignore potential stereochemistry detected on bridgehead atoms.
 
     Parameters
     ----------
@@ -1379,6 +1381,10 @@ def confirm_defined_stereochemistry(smiles: str) -> str:
 
     # Enumerate all potential stereogenic centers (atoms + bonds)
     stereo_infos = Chem.FindPotentialStereo(mol)
+
+    # Remove bridgeheads here
+    bridgehead_atoms = [atom.GetIdx() for atom in mol.GetAtoms() if mol.GetRingInfo().NumAtomRings(atom.GetIdx()) >= 2]
+    stereo_infos = [x for x in stereo_infos if x.centeredOn not in bridgehead_atoms]
 
     # Count total potential stereogenic centers
     n_total = len(stereo_infos)

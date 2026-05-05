@@ -185,6 +185,13 @@ def get_coords_from_smiles(smiles: str,
     Generates a 3D geometry from SMILES using a
     conversion method.
 
+    These are the flags used in the spreadsheet
+    0 = RDKit
+    1 = Chemaxon
+    2 = manual
+    3 = obabel
+    4 = any (uses obabel then rdkit)
+
     Parameters
     ----------
     smiles: str

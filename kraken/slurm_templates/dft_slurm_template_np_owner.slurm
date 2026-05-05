@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --partition=sigman-np
 #SBATCH --account=sigman-np
-#SBATCH --qos=sigman-low-np
+#SBATCH --qos=sigman-np
 #SBATCH --time=$TIME:00:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=$NPROCS

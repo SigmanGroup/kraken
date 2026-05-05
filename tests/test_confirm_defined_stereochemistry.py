@@ -17,7 +17,7 @@ ZERO_UNDEFINED_POINT_STEREOCENTERS = 'O=C(O)[C@@H]1CCC[C@@H]1P(c1ccccc1)c1ccccc1
 # UNDF = undefined, DF = defined
 UNDF_DOUBLE_UNDF_POINT = 'CC(Br)CCC=CP(c1ccccc1)c1ccccc1'
 UNDF_DOUBLE_DF_POINT = 'C[C@H](Br)CCC=CP(c1ccccc1)c1ccccc1'
-DF_DOUBLE_UNDF_POINT_E = 'CC(Br)CC/C=C/P(c1ccccc1)c1ccccc1'   # Defined E
+DF_DOUBLE_UNDF_POINT_E = 'CC(Br)CC/C=C/P(c1ccccc1)c1ccccc1'   # Defined E, other stereocenter is undefined (should )
 DF_DOUBLE_UNDF_POINT_Z = r'CC(Br)CC/C=C\P(c1ccccc1)c1ccccc1'   # Defined Z
 UNDF_DOUBLE_BOND = 'CC(C)C=CP(c1ccccc1)c1ccccc1'
 
@@ -26,6 +26,12 @@ UNDF_POINT_STEREOCENTER = 'CCC(C)P(c1ccccc1)c1ccccc1'
 
 # RDKit detected stereochemistry at heteroatoms
 HETEROATOM_STEREOCHEM = 'NCP(CCCCS(=O)(=O)O)c1ccccc1'
+
+# RDKit undefined adamantyl issue (should pass because once resolved, should converge to one stereoisomer)
+BICYCLIC_ONE = 'Cc1ccc(S(=O)(=O)N2CC3CC2CP3c2ccc(F)cc2)cc1'
+BICYCLIC_TWO = 'CC12CC3(C)OC(C)(CC(C)(O1)P3c1ccccc1)O2'
+ADAMANTYL_ONE = 'c1ccc(P(C23CC4CC(CC(C4)C2)C3)C23CC4CC(CC(C4)C2)C3)c(N2CCCCC2)c1'
+ADAMANTYL_TWO = 'c1ccc(-c2ccccc2P(C23CC4CC(CC(C4)C2)C3)C23CC4CC(CC(C4)C2)C3)cc1'
 
 @pytest.mark.parametrize(
     "smiles",
@@ -60,7 +66,12 @@ def test_confirm_defined_stereochemistry_rejects_expected(smiles: str) -> None:
     [
         ZERO_UNDEFINED_POINT_STEREOCENTERS,
         UNDF_POINT_STEREOCENTER,
-        HETEROATOM_STEREOCHEM
+        HETEROATOM_STEREOCHEM,
+        BICYCLIC_ONE,
+        BICYCLIC_TWO,
+        ADAMANTYL_ONE,
+        ADAMANTYL_TWO
+
     ],
 )
 
